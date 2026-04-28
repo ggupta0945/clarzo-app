@@ -26,27 +26,10 @@ export async function POST(req: NextRequest) {
     isin: h.isin ?? isinMap.get(h.scheme_name) ?? null,
   }))
 
-  // Pipe through current prices from the source CSV (e.g. Zerodha "Closing
-  // price" for stocks) into nav_latest so dashboard P&L works without a
-  // separate stock-price feed.
-  const priceRows = enriched
-    .filter((h) => h.isin && h.current_price && h.current_price > 0)
-    .map((h) => ({
-      isin: h.isin!,
-      scheme_name: h.scheme_name,
-      nav: h.current_price!,
-      scheme_type: h.asset_type,
-    }))
-
-  if (priceRows.length > 0) {
-    const { error: priceErr } = await supabase
-      .from('nav_latest')
-      .upsert(priceRows, { onConflict: 'isin' })
-    if (priceErr) {
-      console.error('Price upsert error:', priceErr)
-    }
-  }
-
+  // Stocks: the source CSV (Zerodha/Groww) gives us a current price/value at
+  // upload time. Store it on the holding row so the dashboard can compute
+  // returns without a stock-price feed (Day 5+ work). Mutual funds resolve
+  // via nav_latest so we leave current_price null and let the join do it.
   const toInsert = enriched.map((h) => ({
     user_id: user.id,
     isin: h.isin,
@@ -55,6 +38,8 @@ export async function POST(req: NextRequest) {
     avg_cost: h.avg_cost,
     asset_type: h.asset_type,
     source: h.source,
+    current_price: h.current_price ?? null,
+    current_value_at_import: h.current_value ?? null,
   }))
 
   const { error } = await supabase.from('holdings').insert(toInsert)

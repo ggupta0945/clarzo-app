@@ -43,8 +43,10 @@ export function zerodhaParser(text: string): ParseResult {
     const units = num(pick(row, ['Quantity', 'Units']))
     const avgCost = num(pick(row, ['Average buy price', 'Average Buy Price', 'Average Price', 'Avg Price', 'Average NAV']))
     const currentPrice = num(pick(row, ['Closing price', 'Closing Price', 'Current Price', 'Current NAV', 'NAV']))
+    const currentValue = num(pick(row, ['Closing value', 'Closing Value', 'Current Value']))
 
     if (!name || units <= 0) continue
+    if (name.toLowerCase().includes('total')) continue
 
     holdings.push({
       isin: isin?.trim() || null,
@@ -52,6 +54,7 @@ export function zerodhaParser(text: string): ParseResult {
       units,
       avg_cost: avgCost > 0 ? avgCost : null,
       current_price: currentPrice > 0 ? currentPrice : null,
+      current_value: currentValue > 0 ? currentValue : null,
       asset_type: assetType,
       source: 'zerodha',
     })

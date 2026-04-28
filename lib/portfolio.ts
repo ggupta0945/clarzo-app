@@ -27,19 +27,24 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
 
   const { data: holdings } = await supabase
     .from('holdings')
-    .select('id, isin, scheme_name, units, avg_cost, asset_type')
+    .select('id, isin, scheme_name, units, avg_cost, asset_type, current_price')
     .eq('user_id', userId)
 
   if (!holdings || holdings.length === 0) return []
 
-  const isins = holdings.map((h) => h.isin).filter((v): v is string => Boolean(v))
-  let navMap = new Map<string, number>()
+  // Mutual funds resolve current price via nav_latest. Stocks carry their
+  // last-known price on the holding itself (set at upload time from the
+  // broker CSV) until a dedicated stock-price feed exists.
+  const mfIsins = holdings
+    .filter((h) => h.asset_type === 'mutual_fund' && h.isin)
+    .map((h) => h.isin as string)
 
-  if (isins.length > 0) {
+  let navMap = new Map<string, number>()
+  if (mfIsins.length > 0) {
     const { data: navs } = await supabase
       .from('nav_latest')
       .select('isin, nav')
-      .in('isin', isins)
+      .in('isin', mfIsins)
 
     navMap = new Map((navs ?? []).map((n) => [n.isin as string, Number(n.nav)]))
   }
@@ -47,7 +52,16 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
   return holdings.map((h) => {
     const units = Number(h.units)
     const avg_cost = h.avg_cost != null ? Number(h.avg_cost) : null
-    const current_nav = h.isin ? navMap.get(h.isin) ?? null : null
+    const asset_type = (h.asset_type as string) ?? 'mutual_fund'
+
+    const current_nav =
+      asset_type === 'stock'
+        ? h.current_price != null
+          ? Number(h.current_price)
+          : null
+        : h.isin
+          ? navMap.get(h.isin) ?? null
+          : null
 
     const invested = avg_cost != null ? units * avg_cost : 0
     const current_value = current_nav != null ? units * current_nav : invested
@@ -60,7 +74,7 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
       scheme_name: h.scheme_name as string,
       units,
       avg_cost,
-      asset_type: (h.asset_type as string) ?? 'mutual_fund',
+      asset_type,
       current_nav,
       current_value,
       invested,
