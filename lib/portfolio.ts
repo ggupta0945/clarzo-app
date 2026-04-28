@@ -6,12 +6,20 @@ export type EnrichedHolding = {
   scheme_name: string
   units: number
   avg_cost: number | null
+  asset_type: string
   current_nav: number | null
   current_value: number
   invested: number
   pnl: number
   pnl_pct: number
-  asset_type: string
+}
+
+export type PortfolioSummary = {
+  netWorth: number
+  invested: number
+  pnl: number
+  pnlPct: number
+  count: number
 }
 
 export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]> {
@@ -19,32 +27,40 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
 
   const { data: holdings } = await supabase
     .from('holdings')
-    .select('*')
+    .select('id, isin, scheme_name, units, avg_cost, asset_type')
     .eq('user_id', userId)
 
-  if (!holdings) return []
+  if (!holdings || holdings.length === 0) return []
 
-  const isins = holdings.filter((h) => h.isin).map((h) => h.isin)
-  const { data: navs } = await supabase
-    .from('nav_latest')
-    .select('isin, nav')
-    .in('isin', isins)
+  const isins = holdings.map((h) => h.isin).filter((v): v is string => Boolean(v))
+  let navMap = new Map<string, number>()
 
-  const navMap = new Map((navs || []).map((n) => [n.isin, n.nav]))
+  if (isins.length > 0) {
+    const { data: navs } = await supabase
+      .from('nav_latest')
+      .select('isin, nav')
+      .in('isin', isins)
+
+    navMap = new Map((navs ?? []).map((n) => [n.isin as string, Number(n.nav)]))
+  }
 
   return holdings.map((h) => {
-    const current_nav = h.isin ? (navMap.get(h.isin) ?? null) : null
-    const current_value = current_nav
-      ? h.units * current_nav
-      : h.avg_cost
-        ? h.units * h.avg_cost
-        : 0
-    const invested = h.avg_cost ? h.units * h.avg_cost : 0
+    const units = Number(h.units)
+    const avg_cost = h.avg_cost != null ? Number(h.avg_cost) : null
+    const current_nav = h.isin ? navMap.get(h.isin) ?? null : null
+
+    const invested = avg_cost != null ? units * avg_cost : 0
+    const current_value = current_nav != null ? units * current_nav : invested
     const pnl = current_value - invested
     const pnl_pct = invested > 0 ? (pnl / invested) * 100 : 0
 
     return {
-      ...h,
+      id: h.id as string,
+      isin: h.isin,
+      scheme_name: h.scheme_name as string,
+      units,
+      avg_cost,
+      asset_type: (h.asset_type as string) ?? 'mutual_fund',
       current_nav,
       current_value,
       invested,
@@ -54,7 +70,7 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
   })
 }
 
-export function computePortfolioSummary(holdings: EnrichedHolding[]) {
+export function computePortfolioSummary(holdings: EnrichedHolding[]): PortfolioSummary {
   const netWorth = holdings.reduce((s, h) => s + h.current_value, 0)
   const invested = holdings.reduce((s, h) => s + h.invested, 0)
   const pnl = netWorth - invested

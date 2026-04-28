@@ -1,61 +1,75 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { type ParsedHolding } from '@/lib/parsers'
+import { fuzzyMatchISINs } from '@/lib/fuzzy-match'
+import type { ParsedHolding } from '@/lib/parsers'
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  let holdings: ParsedHolding[]
-  try {
-    const body = await request.json()
-    holdings = body.holdings
-    if (!Array.isArray(holdings) || holdings.length === 0) {
-      return Response.json({ success: false, error: 'No holdings provided' }, { status: 400 })
+  const body = await req.json()
+  const holdings = body.holdings as ParsedHolding[] | undefined
+
+  if (!Array.isArray(holdings) || holdings.length === 0) {
+    return NextResponse.json({ error: 'no_holdings' }, { status: 400 })
+  }
+
+  const namesNeedingISIN = holdings.filter((h) => !h.isin).map((h) => h.scheme_name)
+  const isinMap = await fuzzyMatchISINs(supabase, namesNeedingISIN)
+
+  const enriched = holdings.map((h) => ({
+    ...h,
+    isin: h.isin ?? isinMap.get(h.scheme_name) ?? null,
+  }))
+
+  // Pipe through current prices from the source CSV (e.g. Zerodha "Closing
+  // price" for stocks) into nav_latest so dashboard P&L works without a
+  // separate stock-price feed.
+  const priceRows = enriched
+    .filter((h) => h.isin && h.current_price && h.current_price > 0)
+    .map((h) => ({
+      isin: h.isin!,
+      scheme_name: h.scheme_name,
+      nav: h.current_price!,
+      scheme_type: h.asset_type,
+    }))
+
+  if (priceRows.length > 0) {
+    const { error: priceErr } = await supabase
+      .from('nav_latest')
+      .upsert(priceRows, { onConflict: 'isin' })
+    if (priceErr) {
+      console.error('Price upsert error:', priceErr)
     }
-  } catch {
-    return Response.json({ success: false, error: 'Invalid request body' }, { status: 400 })
   }
 
-  // Validate each row minimally
-  for (const h of holdings) {
-    if (!h.scheme_name || typeof h.units !== 'number' || h.units <= 0) {
-      return Response.json(
-        { success: false, error: `Invalid holding: ${h.scheme_name ?? 'unknown'}` },
-        { status: 400 }
-      )
-    }
-  }
-
-  // Replace all holdings for this user atomically
-  const { error: deleteError } = await supabase
-    .from('holdings')
-    .delete()
-    .eq('user_id', user.id)
-
-  if (deleteError) {
-    return Response.json({ success: false, error: 'Failed to clear existing holdings' }, { status: 500 })
-  }
-
-  const rows = holdings.map((h) => ({
+  const toInsert = enriched.map((h) => ({
     user_id: user.id,
-    isin: h.isin ?? null,
+    isin: h.isin,
     scheme_name: h.scheme_name,
     units: h.units,
-    avg_cost: h.avg_cost ?? null,
+    avg_cost: h.avg_cost,
     asset_type: h.asset_type,
     source: h.source,
   }))
 
-  const { error: insertError } = await supabase.from('holdings').insert(rows)
+  const { error } = await supabase.from('holdings').insert(toInsert)
 
-  if (insertError) {
-    console.error('Insert error:', insertError)
-    return Response.json({ success: false, error: 'Failed to save holdings' }, { status: 500 })
+  if (error) {
+    console.error('Holdings insert error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return Response.json({ success: true, count: rows.length })
+  const matchedCount = enriched.filter((h) => h.isin).length
+
+  return NextResponse.json({
+    success: true,
+    inserted: toInsert.length,
+    matched: matchedCount,
+    unmatched: toInsert.length - matchedCount,
+  })
 }
