@@ -1,5 +1,4 @@
-import { zerodhaParser } from './zerodha'
-import { growwParser } from './groww'
+import { brokerCsvParser } from './broker'
 import { manualPasteParser } from './manual'
 
 export type ParsedHolding = {
@@ -19,10 +18,4 @@ export type ParseResult = {
   errors: string[]
 }
 
-export const PARSERS = {
-  zerodha: zerodhaParser,
-  groww: growwParser,
-  manual: manualPasteParser,
-} as const
-
-export type ParserSource = keyof typeof PARSERS
+export { brokerCsvParser, manualPasteParser }
