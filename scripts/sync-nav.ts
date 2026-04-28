@@ -55,11 +55,15 @@ async function syncNav() {
     })
   }
 
-  console.log(`Parsed ${records.length} valid NAVs`)
+  const dedupedMap = new Map<string, NavRecord>()
+  for (const r of records) dedupedMap.set(r.isin, r)
+  const deduped = Array.from(dedupedMap.values())
+
+  console.log(`Parsed ${records.length} valid NAVs (${deduped.length} unique ISINs)`)
 
   const CHUNK = 500
-  for (let i = 0; i < records.length; i += CHUNK) {
-    const chunk = records.slice(i, i + CHUNK)
+  for (let i = 0; i < deduped.length; i += CHUNK) {
+    const chunk = deduped.slice(i, i + CHUNK)
     const { error } = await supabase
       .from('nav_latest')
       .upsert(chunk, { onConflict: 'isin' })
@@ -68,7 +72,7 @@ async function syncNav() {
       console.error('Insert error:', error)
       process.exit(1)
     }
-    console.log(`Inserted ${Math.min(i + CHUNK, records.length)}/${records.length}`)
+    console.log(`Inserted ${Math.min(i + CHUNK, deduped.length)}/${deduped.length}`)
   }
 
   console.log('✓ NAV sync complete')
