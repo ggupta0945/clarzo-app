@@ -3,11 +3,16 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
 import { brokerCsvParser, manualPasteParser, type ParseResult } from '@/lib/parsers'
 import { fuzzyMatchISINs } from '@/lib/fuzzy-match'
+import { extractHoldingsFromFile } from '@/lib/ai-extract'
 
-const MAX_BYTES = 5 * 1024 * 1024
+const MAX_BYTES = 10 * 1024 * 1024 // 10MB — PDFs run larger than CSVs
+const AI_EXTENSIONS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic'])
+
+export const maxDuration = 60
 
 // One-shot upload: parse the file or pasted text, fuzzy-match missing ISINs,
 // insert holdings. No preview/confirm step — upload is the confirmation.
+// CSV/xlsx use the deterministic parser; PDFs and images go through Gemini.
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,14 +29,21 @@ export async function POST(req: NextRequest) {
   if (file) {
     if (file.size > MAX_BYTES) {
       return NextResponse.json(
-        { error: 'file_too_large', message: 'File must be under 5MB.' },
+        { error: 'file_too_large', message: 'File must be under 10MB.' },
         { status: 400 },
       )
     }
     filename = file.name
-    const csvText = await fileToCsvText(file)
-    rawForAudit = csvText
-    parseResult = brokerCsvParser(csvText)
+    const ext = file.name.toLowerCase().split('.').pop() ?? ''
+
+    if (AI_EXTENSIONS.has(ext)) {
+      rawForAudit = `[binary ${ext} upload: ${file.name}, ${file.size} bytes]`
+      parseResult = await extractHoldingsFromFile(file)
+    } else {
+      const csvText = await fileToCsvText(file)
+      rawForAudit = csvText
+      parseResult = brokerCsvParser(csvText)
+    }
   } else if (pastedText) {
     rawForAudit = pastedText
     // If pasted text has an ISIN header, treat it as a broker CSV; otherwise
