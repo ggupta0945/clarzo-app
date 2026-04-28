@@ -8,6 +8,7 @@ export type ParsedHolding = {
   units: number
   avg_cost: number | null
   current_price: number | null
+  current_value: number | null
   asset_type: 'stock' | 'mutual_fund'
   source: string
 }

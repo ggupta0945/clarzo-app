@@ -40,9 +40,11 @@ export function growwParser(text: string): ParseResult {
     const isin = pick(row, ['ISIN'])
     const units = num(pick(row, ['Quantity', 'Units']))
     const avgCost = num(pick(row, ['Average Price', 'Average Buy Price', 'Avg Price', 'Average NAV', 'Avg NAV']))
-    const currentPrice = num(pick(row, ['Current Price', 'Closing Price', 'Current NAV', 'NAV']))
+    const currentPrice = num(pick(row, ['Current Price', 'Closing price', 'Closing Price', 'Current NAV', 'NAV']))
+    const currentValue = num(pick(row, ['Current Value', 'Closing value', 'Closing Value']))
 
     if (!name || units <= 0) continue
+    if (name.toLowerCase().includes('total')) continue
 
     holdings.push({
       isin: isin?.trim() || null,
@@ -50,6 +52,7 @@ export function growwParser(text: string): ParseResult {
       units,
       avg_cost: avgCost > 0 ? avgCost : null,
       current_price: currentPrice > 0 ? currentPrice : null,
+      current_value: currentValue > 0 ? currentValue : null,
       asset_type: assetType,
       source: 'groww',
     })

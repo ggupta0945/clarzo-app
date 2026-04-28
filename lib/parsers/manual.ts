@@ -34,6 +34,7 @@ export function manualPasteParser(text: string): ParseResult {
       units,
       avg_cost: avgCost,
       current_price: null,
+      current_value: null,
       asset_type: 'mutual_fund',
       source: 'manual',
     })
