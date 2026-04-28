@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 export default function UploadPage() {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function UploadPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] || null
     if (selected && selected.size > MAX_FILE_SIZE) {
-      setError('File is too large. Please upload a file under 5MB.')
+      setError('File is too large. Please upload a file under 10MB.')
       setFile(null)
       e.target.value = ''
       return
@@ -63,17 +63,17 @@ export default function UploadPage() {
         Upload your holdings
       </h1>
       <p className="text-[#88b098] mb-8">
-        Drop a CSV or Excel file from your broker — Zerodha, Groww, ICICI Direct, anyone.
+        Drop anything — a broker CSV, Excel export, PDF statement, or even a screenshot of your holdings.
       </p>
 
       <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-8">
         <div className="mb-6">
           <label className="block text-sm text-[#88b098] mb-3">
-            Upload file <span className="text-[#4a7a5a]">(CSV or XLSX, max 5MB)</span>
+            Upload file <span className="text-[#4a7a5a]">(CSV, XLSX, PDF, or image — max 10MB)</span>
           </label>
           <input
             type="file"
-            accept=".csv,.xlsx,.xls,.xlsm"
+            accept=".csv,.xlsx,.xls,.xlsm,.pdf,.png,.jpg,.jpeg,.webp,.heic"
             onChange={handleFileChange}
             className="block w-full text-sm text-[#e4f0e8] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-[#102e1e] file:text-[#34d399] hover:file:bg-[#0c2418] cursor-pointer"
           />
