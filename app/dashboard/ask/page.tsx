@@ -1,7 +1,8 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { useEffect, useRef } from 'react'
+import { TextStreamChatTransport, isTextUIPart } from 'ai'
+import { useEffect, useRef, useState } from 'react'
 
 const SUGGESTED_QUESTIONS = [
   'How is my portfolio performing overall?',
@@ -11,14 +12,28 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 export default function AskPage() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
-    api: '/api/ask',
+  const [input, setInput] = useState('')
+  const { messages, sendMessage, status } = useChat({
+    transport: new TextStreamChatTransport({ api: '/api/ask' }),
   })
+  const isLoading = status === 'submitted' || status === 'streaming'
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    sendMessage({ text: input })
+    setInput('')
+  }
+
+  function handleSuggest(q: string) {
+    if (isLoading) return
+    sendMessage({ text: q })
+  }
 
   return (
     <div className="flex flex-col h-screen p-6 max-w-4xl mx-auto">
@@ -44,7 +59,7 @@ export default function AskPage() {
               {SUGGESTED_QUESTIONS.map((q) => (
                 <button
                   key={q}
-                  onClick={() => append({ role: 'user', content: q })}
+                  onClick={() => handleSuggest(q)}
                   className="text-left px-4 py-3 rounded-xl bg-[#071a10] border border-[#1a4a2e] text-[#88b098] text-sm hover:border-[#34d399] hover:text-[#e4f0e8] transition"
                 >
                   {q}
@@ -54,22 +69,26 @@ export default function AskPage() {
           </div>
         )}
 
-        {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                m.role === 'user'
-                  ? 'bg-[#059669] text-white'
-                  : 'bg-[#071a10] border border-[#1a4a2e] text-[#e4f0e8]'
-              }`}
-            >
-              {m.role === 'assistant' && (
-                <p className="text-xs text-[#34d399] mb-1 font-medium">Clarzo</p>
-              )}
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+        {messages.map((m) => {
+          const text = m.parts.filter(isTextUIPart).map((p) => p.text).join('')
+          if (!text) return null
+          return (
+            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  m.role === 'user'
+                    ? 'bg-[#059669] text-white'
+                    : 'bg-[#071a10] border border-[#1a4a2e] text-[#e4f0e8]'
+                }`}
+              >
+                {m.role === 'assistant' && (
+                  <p className="text-xs text-[#34d399] mb-1 font-medium">Clarzo</p>
+                )}
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{text}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {isLoading && (
           <div className="flex justify-start">
@@ -90,14 +109,14 @@ export default function AskPage() {
       <form onSubmit={handleSubmit} className="flex gap-3 mt-4 flex-shrink-0">
         <input
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about your portfolio or finances..."
           className="flex-1 bg-[#071a10] border border-[#1a4a2e] rounded-xl px-4 py-3 text-[#e4f0e8] placeholder-[#4a7a5a] focus:outline-none focus:border-[#34d399] transition"
           disabled={isLoading}
         />
         <button
           type="submit"
-          disabled={isLoading || !input?.trim()}
+          disabled={isLoading || !input.trim()}
           className="bg-[#059669] hover:bg-[#0F6E56] text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           Send

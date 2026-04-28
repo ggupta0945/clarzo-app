@@ -1,4 +1,4 @@
-import { streamText } from 'ai'
+import { streamText, convertToModelMessages } from 'ai'
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
   const result = streamText({
     model: geminiModel,
     system: `You are Clarzo, a friendly and knowledgeable AI financial advisor. Help users understand their investment portfolio and answer questions about finance, mutual funds, stocks, and personal wealth management. Be concise and clear. Always use Indian Rupees (₹) for amounts. Do not provide specific regulated investment advice — educate and inform instead.\n\n${portfolioContext}`,
-    messages,
+    messages: await convertToModelMessages(messages),
   })
 
-  return result.toDataStreamResponse()
+  return result.toTextStreamResponse()
 }
