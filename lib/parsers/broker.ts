@@ -1,12 +1,14 @@
 import Papa from 'papaparse'
 import type { ParseResult, ParsedHolding } from './index'
 
-// Zerodha exports come in two shapes:
-// 1) Console stocks holdings: 10-line preamble (Name, UCC, Summary…) then a
-//    table whose header is "Stock Name,ISIN,Quantity,Average buy price,...".
-// 2) Coin mutual fund holdings: header is "Scheme Name,ISIN,...,Units,...".
-// We locate the real header by finding the first line that contains "ISIN".
-export function zerodhaParser(text: string): ParseResult {
+// Single parser for broker exports (Zerodha Console, Groww Stocks, Coin MF, etc).
+// All of them follow the same shape:
+//   - some preamble of metadata rows (Name, dates, summary block)
+//   - a header row containing "ISIN" plus columns for name/units/price
+//   - data rows
+// We locate the header dynamically and extract via a flexible column picker
+// so a single parser handles every broker.
+export function brokerCsvParser(text: string): ParseResult {
   const errors: string[] = []
   const lines = text.split(/\r?\n/)
 
@@ -15,13 +17,12 @@ export function zerodhaParser(text: string): ParseResult {
     return {
       success: false,
       holdings: [],
-      errors: ['Could not find a header row containing "ISIN". Is this a Zerodha export?'],
+      errors: ['Could not find a header row with "ISIN". Is this a broker holdings export?'],
     }
   }
 
-  // Asset type hint from the preamble (e.g. "Holdings statement for stocks…")
-  const preamble = lines.slice(0, headerIdx).join(' ').toLowerCase()
-  const looksLikeMF = /mutual fund|scheme/.test(preamble) || /scheme name/i.test(lines[headerIdx])
+  const headerLine = lines[headerIdx]
+  const looksLikeMF = /scheme|fund|nav/i.test(headerLine)
   const assetType: ParsedHolding['asset_type'] = looksLikeMF ? 'mutual_fund' : 'stock'
 
   const tableText = lines.slice(headerIdx).join('\n')
@@ -36,14 +37,21 @@ export function zerodhaParser(text: string): ParseResult {
   }
 
   const holdings: ParsedHolding[] = []
-
   for (const row of parsed.data) {
-    const name = pick(row, ['Stock Name', 'Scheme Name', 'Fund Name', 'Name'])
+    const name = pick(row, ['Stock Name', 'Scheme Name', 'Fund Name', 'Instrument', 'Tradingsymbol', 'Symbol', 'Name'])
     const isin = pick(row, ['ISIN'])
-    const units = num(pick(row, ['Quantity', 'Units']))
-    const avgCost = num(pick(row, ['Average buy price', 'Average Buy Price', 'Average Price', 'Avg Price', 'Average NAV']))
-    const currentPrice = num(pick(row, ['Closing price', 'Closing Price', 'Current Price', 'Current NAV', 'NAV']))
-    const currentValue = num(pick(row, ['Closing value', 'Closing Value', 'Current Value']))
+    const units = num(pick(row, ['Quantity', 'Qty', 'Units']))
+    const avgCost = num(pick(row, [
+      'Average buy price', 'Average Buy Price', 'Avg buy price',
+      'Average Price', 'Avg Price', 'Avg cost', 'Avg. cost',
+      'Average NAV', 'Avg NAV',
+    ]))
+    const currentPrice = num(pick(row, [
+      'Closing price', 'Closing Price',
+      'Current Price', 'LTP', 'Last traded price',
+      'Current NAV', 'NAV',
+    ]))
+    const currentValue = num(pick(row, ['Closing value', 'Closing Value', 'Current Value', 'Market Value']))
 
     if (!name || units <= 0) continue
     if (name.toLowerCase().includes('total')) continue
@@ -56,12 +64,12 @@ export function zerodhaParser(text: string): ParseResult {
       current_price: currentPrice > 0 ? currentPrice : null,
       current_value: currentValue > 0 ? currentValue : null,
       asset_type: assetType,
-      source: 'zerodha',
+      source: 'broker',
     })
   }
 
   if (holdings.length === 0) {
-    errors.push('Found a header row but no holdings rows could be parsed.')
+    errors.push('Found a header but no rows could be read.')
   }
 
   return { success: holdings.length > 0, holdings, errors }
@@ -71,6 +79,15 @@ function pick(row: Record<string, string>, keys: string[]): string | undefined {
   for (const k of keys) {
     const v = row[k]
     if (v !== undefined && v !== null && v !== '') return v
+  }
+  // case-insensitive fallback
+  const lowerMap = new Map(Object.keys(row).map((k) => [k.toLowerCase(), k]))
+  for (const k of keys) {
+    const original = lowerMap.get(k.toLowerCase())
+    if (original) {
+      const v = row[original]
+      if (v !== undefined && v !== null && v !== '') return v
+    }
   }
   return undefined
 }
