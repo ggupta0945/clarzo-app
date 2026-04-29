@@ -19,12 +19,6 @@ export function DashboardNav({ profile }: { profile: Profile }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
-  // Auto-close drawer on navigation. usePathname only changes after the
-  // client-side route transition, so this fires exactly once per nav.
-  useEffect(() => {
-    setOpen(false)
-  }, [pathname])
-
   // Lock body scroll while the drawer is open so the page underneath doesn't
   // scroll along with it on iOS.
   useEffect(() => {
@@ -97,6 +91,7 @@ export function DashboardNav({ profile }: { profile: Profile }) {
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={() => setOpen(false)}
                 className={`block px-4 py-2 rounded-lg transition ${
                   active
                     ? 'bg-[#0c2418] text-[#34d399]'

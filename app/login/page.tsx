@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { captureEvent } from '@/lib/analytics/client'
 import { useState } from 'react'
 
 export default function LoginPage() {
@@ -8,6 +9,7 @@ export default function LoginPage() {
 
   async function signInWithGoogle() {
     setLoading(true)
+    captureEvent('signup_clicked', { provider: 'google' })
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

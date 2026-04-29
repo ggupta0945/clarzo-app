@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyWebhookSignature } from '@/lib/razorpay'
+import { captureServerEvent } from '@/lib/analytics/server'
 
 export const runtime = 'nodejs'
 
@@ -64,16 +65,30 @@ export async function POST(req: NextRequest) {
     update.current_period_end = new Date(sub.current_end * 1000).toISOString()
   }
 
-  const { error } = await admin
+  const { data: subscriptionRow, error } = await admin
     .from('subscriptions')
     .update(update)
     .eq('razorpay_subscription_id', sub.id)
+    .select('user_id')
+    .maybeSingle()
 
   if (error) {
     // Don't 500 — Razorpay would just retry. Log and ack so we can
     // reconcile manually instead of getting hammered.
     console.error('razorpay webhook: db update failed', { event: event.event, sub_id: sub.id, error })
     return NextResponse.json({ ok: false, logged: true })
+  }
+
+  if (status === 'active' && subscriptionRow?.user_id) {
+    try {
+      await captureServerEvent(subscriptionRow.user_id, 'subscription_activated', {
+        plan: 'pro',
+        razorpay_event: event.event,
+        razorpay_subscription_id: sub.id,
+      })
+    } catch (analyticsError) {
+      console.error('razorpay webhook: analytics capture failed', analyticsError)
+    }
   }
 
   return NextResponse.json({ ok: true })

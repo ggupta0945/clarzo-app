@@ -3,7 +3,8 @@
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { captureEvent } from '@/lib/analytics/client'
 
 const SUGGESTED_QUESTIONS = [
   "What's my biggest risk right now?",
@@ -57,30 +58,33 @@ function AskPageInner() {
 
   // Wrap fetch on the transport so we can read X-RateLimit-* headers and
   // surface 429 responses as a banner instead of a generic stream error.
-  const transport = useRef(
-    new TextStreamChatTransport({
-      api: '/api/ask',
-      fetch: async (input, init) => {
-        const res = await fetch(input, init)
-        const remaining = res.headers.get('X-RateLimit-Remaining')
-        if (remaining != null) {
-          setRateLimit((prev) => ({ ...prev, remaining: Number(remaining) }))
-        }
-        if (res.status === 429) {
-          let message = "You've used your free queries for this month."
-          try {
-            const body = await res.clone().json()
-            if (body?.message) message = body.message
-          } catch {}
-          setRateLimit({ remaining: 0, blocked: true, message })
-        }
-        return res
-      },
-    }),
+  const transport = useMemo(
+    () =>
+      new TextStreamChatTransport({
+        api: '/api/ask',
+        fetch: async (input, init) => {
+          const res = await fetch(input, init)
+          const remaining = res.headers.get('X-RateLimit-Remaining')
+          if (remaining != null) {
+            setRateLimit((prev) => ({ ...prev, remaining: Number(remaining) }))
+          }
+          if (res.status === 429) {
+            let message = "You've used your free queries for this month."
+            try {
+              const body = await res.clone().json()
+              if (body?.message) message = body.message
+            } catch {}
+            captureEvent('chat_limit_hit')
+            setRateLimit({ remaining: 0, blocked: true, message })
+          }
+          return res
+        },
+      }),
+    [],
   )
 
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: transport.current,
+    transport,
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -128,12 +132,20 @@ function AskPageInner() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+    captureEvent('chat_message_sent', {
+      source: 'manual',
+      message_length: input.trim().length,
+    })
     sendMessage({ text: input })
     setInput('')
   }
 
   function handleSuggest(q: string) {
     if (isLoading) return
+    captureEvent('chat_message_sent', {
+      source: 'suggested',
+      message_length: q.length,
+    })
     sendMessage({ text: q })
   }
 

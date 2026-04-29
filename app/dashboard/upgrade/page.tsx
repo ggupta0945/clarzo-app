@@ -2,6 +2,7 @@
 
 import Script from 'next/script'
 import { useState } from 'react'
+import { captureEvent } from '@/lib/analytics/client'
 
 // Minimal type for the bit of Razorpay Checkout we touch. Razorpay doesn't
 // publish first-party TS types, so we declare the shape we use and skip the
@@ -36,6 +37,7 @@ export default function UpgradePage() {
       return
     }
 
+    captureEvent('upgrade_clicked')
     setState('creating')
     setErrorMsg(null)
 
@@ -58,6 +60,7 @@ export default function UpgradePage() {
           // Razorpay confirms payment client-side, but we still rely on the
           // webhook for the source-of-truth status flip. Just show
           // confirmation here; the user's plan will activate within seconds.
+          captureEvent('checkout_payment_confirmed', { plan: 'pro' })
           setState('success')
         },
         modal: {

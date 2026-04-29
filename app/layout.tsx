@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PostHogProvider } from '@/lib/analytics/client'
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-[#040f0a] text-[#e4f0e8]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );

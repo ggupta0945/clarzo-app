@@ -6,6 +6,7 @@ import { SectorDonut } from '@/components/charts/SectorDonut'
 import { McapBreakdown } from '@/components/charts/McapBreakdown'
 import { TopHoldingsBar } from '@/components/charts/TopHoldingsBar'
 import { InsightCard } from '@/components/dashboard/InsightCard'
+import { TrackEvent } from '@/components/analytics/TrackEvent'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   if (holdings.length === 0) {
     return (
       <div className="px-4 py-6 sm:p-10 max-w-5xl mx-auto">
+        <TrackEvent event="dashboard_viewed" properties={{ holdings_count: 0 }} />
         <div className="mb-10">
           <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
             Welcome, {profile?.name?.split(' ')[0] || 'there'}
@@ -58,6 +60,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="px-4 py-6 sm:p-10 max-w-6xl mx-auto">
+      <TrackEvent
+        event="dashboard_viewed"
+        properties={{
+          holdings_count: holdings.length,
+          insights_count: insights.length,
+        }}
+      />
       <div className="mb-10">
         <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
           Hi {profile?.name?.split(' ')[0] || 'there'}
