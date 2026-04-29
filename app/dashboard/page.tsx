@@ -7,6 +7,7 @@ import { McapBreakdown } from '@/components/charts/McapBreakdown'
 import { TopHoldingsBar } from '@/components/charts/TopHoldingsBar'
 import { InsightCard } from '@/components/dashboard/InsightCard'
 import { TrackEvent } from '@/components/analytics/TrackEvent'
+import { EmailSampleButton } from '@/components/dashboard/EmailSampleButton'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -67,11 +68,14 @@ export default async function DashboardPage() {
           insights_count: insights.length,
         }}
       />
-      <div className="mb-10">
-        <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-          Hi {profile?.name?.split(' ')[0] || 'there'}
-        </h1>
-        <p className="text-[#88b098]">Here&apos;s where your money stands today.</p>
+      <div className="mb-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+            Hi {profile?.name?.split(' ')[0] || 'there'}
+          </h1>
+          <p className="text-[#88b098]">Here&apos;s where your money stands today.</p>
+        </div>
+        <EmailSampleButton />
       </div>
 
       {/* Summary cards */}

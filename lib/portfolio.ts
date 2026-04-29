@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type EnrichedHolding = {
   id: string
@@ -25,8 +26,9 @@ export type PortfolioSummary = {
   count: number
 }
 
-export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]> {
-  const supabase = await createClient()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getUserHoldings(userId: string, client?: SupabaseClient<any, 'public', any>): Promise<EnrichedHolding[]> {
+  const supabase = client ?? (await createClient())
 
   const { data: holdings } = await supabase
     .from('holdings')

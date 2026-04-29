@@ -16,6 +16,7 @@ AI money coach for Indian investors. Users sign in, upload portfolio holdings, s
 - Razorpay subscription checkout
 - Razorpay webhook unlocks Pro
 - PostHog analytics for the key funnel
+- Weekly email digest cron via Vercel Cron + Resend
 
 ### Analytics events
 
@@ -32,8 +33,15 @@ AI money coach for Indian investors. Users sign in, upload portfolio holdings, s
 - `upgrade_clicked`
 - `checkout_payment_confirmed`
 - `subscription_activated`
+- `weekly_digest_sample_clicked`
+- `weekly_digest_sample_sent`
+- `weekly_digest_sample_failed`
 
 Analytics intentionally avoids sending portfolio values, goal amounts, holdings names, or chat content.
+
+### Weekly Digest
+
+Vercel Cron calls `/api/cron/weekly-digest` every Monday at 03:30 UTC, which is 9:00 AM IST. The route requires `CRON_SECRET` and sends one digest email to every user with holdings. Dashboard users can also trigger a sample email from the dashboard.
 
 ### Required env vars
 
@@ -55,6 +63,10 @@ RAZORPAY_WEBHOOK_SECRET=
 
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=Clarzo <hello@clarzo.ai>
+CRON_SECRET=
 ```
 
 Optional server-side PostHog aliases:
@@ -76,6 +88,6 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Days 4-7 Plan
 
 - Day 4: Stranger-test the full onboarding flow, read friend feedback, fix the highest-friction moments.
-- Day 5: Add one delight feature only if feedback clearly points to it.
+- Day 5: Polish weekly digest copy and add one delight feature only if feedback clearly points to it.
 - Day 6: Launch prep, copy polish, social cards, analytics dashboard.
 - Day 7: Send to 15 friends, watch the funnel, reply fast.
