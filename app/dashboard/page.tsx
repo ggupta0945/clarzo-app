@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
-import { aggregateBySector } from '@/lib/allocation'
+import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
-import { SectorPie } from '@/components/charts/SectorPie'
+import { SectorDonut } from '@/components/charts/SectorDonut'
+import { McapBreakdown } from '@/components/charts/McapBreakdown'
 import { TopHoldingsBar } from '@/components/charts/TopHoldingsBar'
 import { InsightCard } from '@/components/dashboard/InsightCard'
 import Link from 'next/link'
@@ -52,6 +53,7 @@ export default async function DashboardPage() {
 
   const insights = generateInsights(holdings)
   const sectorAllocation = aggregateBySector(holdings)
+  const mcapAllocation = aggregateByMcap(holdings)
   const sortedHoldings = [...holdings].sort((a, b) => b.current_value - a.current_value)
 
   return (
@@ -106,9 +108,16 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        {sectorAllocation.slices.length > 0 && <SectorPie allocation={sectorAllocation} />}
+      {/* Allocation */}
+      {sectorAllocation.slices.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <SectorDonut allocation={sectorAllocation} />
+          <McapBreakdown allocation={mcapAllocation} />
+        </div>
+      )}
+
+      {/* Top holdings */}
+      <div className="mb-8">
         <TopHoldingsBar holdings={sortedHoldings} />
       </div>
 

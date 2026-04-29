@@ -41,15 +41,15 @@ export function generateInsights(holdings: EnrichedHolding[]): Insight[] {
     }
   }
 
-  // 2. Sector skew: any sector >30% of holdings
+  // 2. Sector skew: any sector >35% of holdings
   const sector = aggregateBySector(holdings)
   for (const slice of sector.slices) {
     if (slice.label === 'Unclassified') continue
-    if (slice.pct >= 30) {
+    if (slice.pct >= 35) {
       insights.push({
         id: `sector-skew-${slice.label}`,
         severity: 'warning',
-        title: `${slice.pct.toFixed(0)}% of your money is in ${slice.label}`,
+        title: `${slice.pct.toFixed(0)}% of your portfolio is in ${slice.label}`,
         description: `Heavy single-sector exposure means a sector-wide downturn hits hard. Consider balancing with other sectors.`,
       })
     }
@@ -93,16 +93,29 @@ export function generateInsights(holdings: EnrichedHolding[]): Insight[] {
     }
   }
 
-  // 6. Mid/small-cap tilt: >50% of equity in non-large
+  // 6. Small/micro-cap exposure: typical balanced guidance is 15–25%
   const mcap = aggregateByMcap(holdings)
+  const smallPct = mcap.slices
+    .filter((s) => s.label === 'Small cap' || s.label === 'Micro cap')
+    .reduce((sum, s) => sum + s.pct, 0)
+  if (smallPct >= 30) {
+    insights.push({
+      id: 'small-cap-heavy',
+      severity: 'warning',
+      title: `${smallPct.toFixed(0)}% of your portfolio is in small/micro cap`,
+      description: `Higher return potential, but also much higher volatility. Typical guidance for balanced portfolios is 15–25%.`,
+    })
+  }
+
+  // 7. Mid/small tilt overall: >50% in anything below large
   const nonLarge = mcap.slices
     .filter((s) => s.label !== 'Large cap' && s.label !== 'Unclassified')
     .reduce((sum, s) => sum + s.pct, 0)
-  if (nonLarge >= 50) {
+  if (nonLarge >= 50 && smallPct < 30) {
     insights.push({
       id: 'mcap-tilt',
       severity: 'info',
-      title: `${nonLarge.toFixed(0)}% of your portfolio is mid/small cap`,
+      title: `${nonLarge.toFixed(0)}% of your portfolio is mid or small cap`,
       description: `Higher growth potential, higher volatility. In a market correction, mid and small caps usually fall harder than large caps.`,
     })
   }
