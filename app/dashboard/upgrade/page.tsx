@@ -51,7 +51,7 @@ export default function UpgradePage() {
         key: key_id,
         subscription_id,
         name: 'Clarzo',
-        description: 'Clarzo Pro — ₹199/mo',
+        description: 'Clarzo Pro — ₹99/mo',
         prefill: { name: user?.name, email: user?.email },
         theme: { color: '#059669' },
         handler: () => {
@@ -129,7 +129,7 @@ export default function UpgradePage() {
               className="text-3xl text-[#e4f0e8]"
               style={{ fontFamily: 'Playfair Display, serif' }}
             >
-              ₹199
+              ₹99
               <span className="text-base text-[#88b098]"> / mo</span>
             </p>
           </div>
