@@ -50,7 +50,9 @@ export default function UploadPage() {
         return
       }
 
-      router.push('/dashboard')
+      // Land on Ask Clarzo so the auto-greet kicks in immediately — that's
+      // the wow moment. The dashboard is one click away in the nav.
+      router.push('/dashboard/ask?welcome=true')
     } catch {
       setError('Network error. Try again.')
       setLoading(false)

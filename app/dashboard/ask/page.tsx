@@ -2,7 +2,8 @@
 
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, isTextUIPart } from 'ai'
-import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useRef, useState } from 'react'
 
 const SUGGESTED_QUESTIONS = [
   "What's my biggest risk right now?",
@@ -21,6 +22,27 @@ type StoredMessage = {
 }
 
 export default function AskPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] lg:h-screen">
+          <div className="flex space-x-1.5">
+            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" />
+            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+      }
+    >
+      <AskPageInner />
+    </Suspense>
+  )
+}
+
+function AskPageInner() {
+  const searchParams = useSearchParams()
+  const queryParam = searchParams.get('q')
+  const welcomeParam = searchParams.get('welcome') === 'true'
   const [input, setInput] = useState('')
   const [hydrating, setHydrating] = useState(true)
   const [history, setHistory] = useState<StoredMessage[]>([])
@@ -64,7 +86,9 @@ export default function AskPage() {
 
   // Load past chat on mount. If empty, fire the auto-greet so a returning
   // user sees the conversation pick up, while a first-time user gets an
-  // immediate personalized snapshot.
+  // immediate personalized snapshot. If the URL carries ?q=... (e.g. from a
+  // goal card), send that as the user's message instead of the greet — the
+  // user's intent is explicit so we honor it over the snapshot.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -75,8 +99,14 @@ export default function AskPage() {
 
         if (json.messages.length > 0) {
           setHistory(json.messages)
-        } else if (!greetTriggeredRef.current) {
-          greetTriggeredRef.current = true
+        }
+
+        if (greetTriggeredRef.current) return
+        greetTriggeredRef.current = true
+
+        if (queryParam) {
+          sendMessage({ text: queryParam })
+        } else if (json.messages.length === 0 || welcomeParam) {
           sendMessage({ text: AUTO_GREET_PROMPT })
         }
       } catch (e) {
@@ -237,8 +267,14 @@ export default function AskPage() {
       </div>
 
       {rateLimit.blocked && rateLimit.message && (
-        <div className="mt-4 flex-shrink-0 bg-[#3a1f0c] border border-[#7a4a1f] rounded-xl px-4 py-3 text-sm text-[#f5c842]">
-          {rateLimit.message}
+        <div className="mt-4 flex-shrink-0 bg-[#3a1f0c] border border-[#7a4a1f] rounded-xl px-4 py-3 text-sm text-[#f5c842] flex items-center justify-between gap-3">
+          <span>{rateLimit.message}</span>
+          <a
+            href="/dashboard/upgrade"
+            className="bg-[#059669] hover:bg-[#0F6E56] text-white px-4 py-1.5 rounded-full text-xs font-medium transition shrink-0"
+          >
+            Upgrade
+          </a>
         </div>
       )}
 
