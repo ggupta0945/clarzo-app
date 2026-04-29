@@ -12,6 +12,9 @@ export type EnrichedHolding = {
   invested: number
   pnl: number
   pnl_pct: number
+  sector: string | null
+  mcap_category: string | null
+  corp_group: string | null
 }
 
 export type PortfolioSummary = {
@@ -49,6 +52,29 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
     navMap = new Map((navs ?? []).map((n) => [n.isin as string, Number(n.nav)]))
   }
 
+  // Enrich with sector/mcap/corp_group from the companies reference table.
+  // Stocks not in the seed fall through with nulls, which the dashboard
+  // groups under "Unclassified".
+  const allIsins = holdings.map((h) => h.isin).filter((v): v is string => Boolean(v))
+  let companyMap = new Map<string, { sector: string | null; mcap_category: string | null; corp_group: string | null }>()
+  if (allIsins.length > 0) {
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('isin, sector, mcap_category, corp_group')
+      .in('isin', allIsins)
+
+    companyMap = new Map(
+      (companies ?? []).map((c) => [
+        c.isin as string,
+        {
+          sector: (c.sector as string) ?? null,
+          mcap_category: (c.mcap_category as string) ?? null,
+          corp_group: (c.corp_group as string) ?? null,
+        },
+      ]),
+    )
+  }
+
   return holdings.map((h) => {
     const units = Number(h.units)
     const avg_cost = h.avg_cost != null ? Number(h.avg_cost) : null
@@ -68,6 +94,8 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
     const pnl = current_value - invested
     const pnl_pct = invested > 0 ? (pnl / invested) * 100 : 0
 
+    const meta = h.isin ? companyMap.get(h.isin) : undefined
+
     return {
       id: h.id as string,
       isin: h.isin,
@@ -80,6 +108,9 @@ export async function getUserHoldings(userId: string): Promise<EnrichedHolding[]
       invested,
       pnl,
       pnl_pct,
+      sector: meta?.sector ?? null,
+      mcap_category: meta?.mcap_category ?? null,
+      corp_group: meta?.corp_group ?? null,
     }
   })
 }
