@@ -1,19 +1,89 @@
 'use client'
 
+import Script from 'next/script'
 import { useState } from 'react'
 
-export default function UpgradePage() {
-  const [requested, setRequested] = useState(false)
+// Minimal type for the bit of Razorpay Checkout we touch. Razorpay doesn't
+// publish first-party TS types, so we declare the shape we use and skip the
+// rest. All payment auth happens inside the Razorpay popup — we never see
+// card data.
+type RazorpayOptions = {
+  key: string
+  subscription_id: string
+  name: string
+  description: string
+  prefill?: { name?: string; email?: string }
+  theme?: { color: string }
+  handler?: (response: unknown) => void
+  modal?: { ondismiss?: () => void }
+}
 
-  // Razorpay isn't wired up yet — KYC is in flight. Until then, this just
-  // captures intent: hitting the button switches to a "we'll email you"
-  // confirmation so users don't bounce off a dead CTA.
-  function startCheckout() {
-    setRequested(true)
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => { open: () => void }
   }
+}
+
+export default function UpgradePage() {
+  const [state, setState] = useState<'idle' | 'creating' | 'opened' | 'success' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  async function startCheckout() {
+    if (state === 'creating' || state === 'opened') return
+    if (!window.Razorpay) {
+      setErrorMsg('Payment script still loading — try again in a moment.')
+      setState('error')
+      return
+    }
+
+    setState('creating')
+    setErrorMsg(null)
+
+    try {
+      const res = await fetch('/api/razorpay/checkout', { method: 'POST' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j.error ?? 'checkout_failed')
+      }
+      const { subscription_id, key_id, user } = await res.json()
+
+      const rzp = new window.Razorpay({
+        key: key_id,
+        subscription_id,
+        name: 'Clarzo',
+        description: 'Clarzo Pro — ₹199/mo',
+        prefill: { name: user?.name, email: user?.email },
+        theme: { color: '#059669' },
+        handler: () => {
+          // Razorpay confirms payment client-side, but we still rely on the
+          // webhook for the source-of-truth status flip. Just show
+          // confirmation here; the user's plan will activate within seconds.
+          setState('success')
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed the popup without paying — back to idle so they
+            // can retry without a page refresh.
+            setState((prev) => (prev === 'success' ? prev : 'idle'))
+          },
+        },
+      })
+      setState('opened')
+      rzp.open()
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'checkout_failed')
+      setState('error')
+    }
+  }
+
+  const buttonLabel =
+    state === 'creating' ? 'Opening checkout…' : state === 'opened' ? 'Complete in popup…' : 'Upgrade to Pro'
+  const buttonDisabled = state === 'creating' || state === 'opened'
 
   return (
     <div className="px-4 py-6 sm:p-10 max-w-3xl mx-auto">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+
       <h1
         className="text-3xl text-[#e4f0e8] mb-3"
         style={{ fontFamily: 'Playfair Display, serif' }}
@@ -72,17 +142,23 @@ export default function UpgradePage() {
             <li>✓ Tax harvesting alerts</li>
             <li>✓ Priority support</li>
           </ul>
-          {requested ? (
+          {state === 'success' ? (
             <div className="bg-[#0c2418] border border-[#34d399]/30 rounded-xl px-4 py-3 text-sm text-[#34d399] text-center">
-              Got it — we&apos;ll email you the moment Pro goes live.
+              Payment received! Your Pro features will activate in a few seconds.
             </div>
           ) : (
             <button
               onClick={startCheckout}
-              className="w-full bg-[#059669] hover:bg-[#0F6E56] text-white py-3 rounded-full font-medium text-sm transition"
+              disabled={buttonDisabled}
+              className="w-full bg-[#059669] hover:bg-[#0F6E56] disabled:opacity-60 disabled:cursor-wait text-white py-3 rounded-full font-medium text-sm transition"
             >
-              Upgrade to Pro
+              {buttonLabel}
             </button>
+          )}
+          {errorMsg && (
+            <p className="mt-3 text-xs text-[#f5c842] text-center">
+              Could not start checkout: {errorMsg}
+            </p>
           )}
         </div>
       </div>
