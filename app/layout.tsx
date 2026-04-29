@@ -2,9 +2,29 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Clarzo — Your AI money coach",
-  description: "Upload your portfolio. Get clear answers in plain English.",
-};
+  metadataBase: new URL('https://app.clarzo.ai'),
+  title: {
+    default: 'Clarzo — Your AI money coach',
+    template: '%s · Clarzo',
+  },
+  description:
+    'Upload your portfolio. See your sector mix, market-cap exposure, and risks at a glance. Ask Clarzo anything about your money in plain English.',
+  applicationName: 'Clarzo',
+  openGraph: {
+    title: 'Clarzo — Your AI money coach',
+    description: 'Upload your portfolio. Get clear answers in plain English.',
+    url: 'https://app.clarzo.ai',
+    siteName: 'Clarzo',
+    locale: 'en_IN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Clarzo — Your AI money coach',
+    description: 'Upload your portfolio. Get clear answers in plain English.',
+  },
+  robots: { index: true, follow: true },
+}
 
 export default function RootLayout({
   children,

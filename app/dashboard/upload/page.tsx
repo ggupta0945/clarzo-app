@@ -58,7 +58,7 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="p-10 max-w-3xl mx-auto">
+    <div className="px-4 py-6 sm:p-10 max-w-3xl mx-auto">
       <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
         Upload your holdings
       </h1>
@@ -66,7 +66,7 @@ export default function UploadPage() {
         Drop a CSV or Excel file from your broker — Zerodha, Groww, ICICI Direct, anyone.
       </p>
 
-      <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-8">
+      <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-5 sm:p-8">
         <div className="mb-6">
           <label className="block text-sm text-[#88b098] mb-3">
             Upload file <span className="text-[#4a7a5a]">(CSV or XLSX, max 5MB)</span>

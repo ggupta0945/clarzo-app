@@ -1,11 +1,12 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
 import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
 import { buildSystemPrompt } from '@/lib/chat-context'
 import { geminiModel } from '@/lib/ai'
+import { checkChatLimit } from '@/lib/ratelimit'
 
 export const maxDuration = 30
 
@@ -13,6 +14,29 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
+
+  // Rate limit before doing any work. checkChatLimit returns null when
+  // Upstash isn't configured (local dev) — that's fine, requests pass through.
+  const limit = await checkChatLimit(user.id)
+  if (limit && !limit.success) {
+    const resetIn = Math.max(0, Math.round((limit.reset - Date.now()) / 1000 / 86400))
+    return NextResponse.json(
+      {
+        error: 'rate_limit',
+        message: `You've used your ${limit.limit} free queries. Resets in ~${resetIn} day${resetIn === 1 ? '' : 's'}.`,
+        remaining: 0,
+        limit: limit.limit,
+      },
+      {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': String(limit.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(limit.reset),
+        },
+      },
+    )
+  }
 
   const { messages } = (await req.json()) as { messages: UIMessage[] }
 
@@ -53,7 +77,13 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return result.toTextStreamResponse()
+  const response = result.toTextStreamResponse()
+  if (limit) {
+    response.headers.set('X-RateLimit-Limit', String(limit.limit))
+    response.headers.set('X-RateLimit-Remaining', String(limit.remaining))
+    response.headers.set('X-RateLimit-Reset', String(limit.reset))
+  }
+  return response
 }
 
 function extractText(m: UIMessage): string {

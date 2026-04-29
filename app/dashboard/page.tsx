@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   // Empty state
   if (holdings.length === 0) {
     return (
-      <div className="p-10 max-w-5xl mx-auto">
+      <div className="px-4 py-6 sm:p-10 max-w-5xl mx-auto">
         <div className="mb-10">
           <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
             Welcome, {profile?.name?.split(' ')[0] || 'there'}
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
   const sortedHoldings = [...holdings].sort((a, b) => b.current_value - a.current_value)
 
   return (
-    <div className="p-10 max-w-6xl mx-auto">
+    <div className="px-4 py-6 sm:p-10 max-w-6xl mx-auto">
       <div className="mb-10">
         <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
           Hi {profile?.name?.split(' ')[0] || 'there'}
