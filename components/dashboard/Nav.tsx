@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/dashboard/upload', label: 'Upload Portfolio' },
   { href: '/dashboard/ask', label: 'Ask Clarzo' },
   { href: '/dashboard/goals', label: 'Goals' },
+  { href: '/dashboard/upgrade', label: 'Upgrade' },
 ]
 
 export function DashboardNav({ profile }: { profile: Profile }) {

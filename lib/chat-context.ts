@@ -1,6 +1,8 @@
 import type { EnrichedHolding, PortfolioSummary } from './portfolio'
 import type { Allocation } from './allocation'
 import type { Insight } from './insights'
+import type { Goal } from './goals'
+import { projectGoal } from './goal-projection'
 
 type Ctx = {
   holdings: EnrichedHolding[]
@@ -8,6 +10,7 @@ type Ctx = {
   sectors: Allocation
   mcaps: Allocation
   insights: Insight[]
+  goals: Goal[]
 }
 
 // The hero prompt. Owns ClarzoGPT's voice and the contract with the model:
@@ -15,13 +18,33 @@ type Ctx = {
 // (not directives), keep it short. The portfolio block is rebuilt on every
 // turn — model sees fresh holdings, no stale state.
 export function buildSystemPrompt(ctx: Ctx): string {
-  const { holdings, summary, sectors, mcaps, insights } = ctx
+  const { holdings, summary, sectors, mcaps, insights, goals } = ctx
 
   if (holdings.length === 0) {
     return `You are Clarzo — an AI money coach for Indian investors. You speak in plain English, like a smart friend, not a banker.
 
 The user has not uploaded a portfolio yet. Encourage them to upload one (a Zerodha/Groww CSV, Excel, PDF, or screenshot) at /dashboard/upload. Until then, you can answer general personal-finance questions about Indian markets, mutual funds, taxes, and basic concepts. Keep responses under 120 words. Never give explicit buy/sell calls.`
   }
+
+  const goalsBlock =
+    goals.length > 0
+      ? goals
+          .map((g) => {
+            const proj = projectGoal(summary.netWorth, g.target_amount, g.target_year)
+            const statusLabel =
+              proj.status === 'ahead'
+                ? 'on track / ahead'
+                : proj.status === 'behind'
+                  ? 'behind'
+                  : 'on track'
+            const sip =
+              proj.monthlySipNeeded > 0
+                ? ` · needs ~₹${fmt(proj.monthlySipNeeded)}/mo SIP to close gap`
+                : ''
+            return `- ${g.title}: ₹${fmt(g.target_amount)} by ${g.target_year} (${proj.yearsToGoal}y) — ${statusLabel}${sip}`
+          })
+          .join('\n')
+      : '(none set)'
 
   const top = holdings
     .slice()
@@ -69,6 +92,9 @@ ${mcaps.slices.map((m) => `- ${m.label}: ${m.pct.toFixed(1)}%`).join('\n')}
 
 INSIGHTS WE'VE ALREADY DETECTED
 ${insights.length > 0 ? insights.map((i) => `- [${i.severity}] ${i.title}: ${i.description}`).join('\n') : '(none)'}
+
+USER'S GOALS (projections assume current net worth compounds at 12%/yr untouched)
+${goalsBlock}
 
 Now answer the user. Be specific, use their actual numbers, suggest concrete options when appropriate, end with a follow-up question or next step.`
 }

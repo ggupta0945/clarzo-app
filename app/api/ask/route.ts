@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
 import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
+import { getUserGoals } from '@/lib/goals'
 import { buildSystemPrompt } from '@/lib/chat-context'
 import { geminiModel, geminiSafetySettings } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
+import { getUserPlan } from '@/lib/subscription'
 
 export const maxDuration = 30
 
@@ -15,9 +17,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
+  // Pro-tier users bypass the free-tier rate limit entirely.
+  const plan = await getUserPlan(user.id)
+
   // Rate limit before doing any work. checkChatLimit returns null when
   // Upstash isn't configured (local dev) — that's fine, requests pass through.
-  const limit = await checkChatLimit(user.id)
+  const limit = plan === 'active' ? null : await checkChatLimit(user.id)
   if (limit && !limit.success) {
     const resetIn = Math.max(0, Math.round((limit.reset - Date.now()) / 1000 / 86400))
     return NextResponse.json(
@@ -40,13 +45,16 @@ export async function POST(req: NextRequest) {
 
   const { messages } = (await req.json()) as { messages: UIMessage[] }
 
-  const holdings = await getUserHoldings(user.id)
+  const [holdings, goals] = await Promise.all([
+    getUserHoldings(user.id),
+    getUserGoals(user.id),
+  ])
   const summary = computePortfolioSummary(holdings)
   const sectors = aggregateBySector(holdings)
   const mcaps = aggregateByMcap(holdings)
   const insights = generateInsights(holdings)
 
-  const system = buildSystemPrompt({ holdings, summary, sectors, mcaps, insights })
+  const system = buildSystemPrompt({ holdings, summary, sectors, mcaps, insights, goals })
 
   // Persist the user's last turn before we stream — even if streaming fails,
   // the question is captured. We stay deliberately silent on errors here:
