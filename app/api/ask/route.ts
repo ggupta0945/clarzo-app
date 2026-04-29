@@ -5,7 +5,7 @@ import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
 import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
 import { buildSystemPrompt } from '@/lib/chat-context'
-import { geminiModel } from '@/lib/ai'
+import { geminiModel, geminiSafetySettings } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 
 export const maxDuration = 30
@@ -68,6 +68,16 @@ export async function POST(req: NextRequest) {
     model: geminiModel,
     system,
     messages: await convertToModelMessages(messages),
+    // Hard cap so a runaway model can't blow our token budget; 600 tokens is
+    // ~450 words, well past our 120-word target but enough headroom for the
+    // auto-greet 3-bullet snapshot.
+    maxOutputTokens: 600,
+    temperature: 0.7,
+    providerOptions: {
+      google: {
+        safetySettings: geminiSafetySettings,
+      },
+    },
     onFinish: async ({ text }) => {
       if (!text) return
       const { error } = await supabase
