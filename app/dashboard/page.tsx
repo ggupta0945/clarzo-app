@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
+import { aggregateBySector } from '@/lib/allocation'
+import { generateInsights } from '@/lib/insights'
+import { SectorPie } from '@/components/charts/SectorPie'
+import { TopHoldingsBar } from '@/components/charts/TopHoldingsBar'
+import { InsightCard } from '@/components/dashboard/InsightCard'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -32,7 +37,7 @@ export default async function DashboardPage() {
             No portfolio yet
           </h2>
           <p className="text-[#88b098] mb-6 max-w-md mx-auto">
-            Upload your Zerodha or Groww CSV to see your complete portfolio with insights.
+            Upload your portfolio to see a complete picture with auto-generated insights.
           </p>
           <Link
             href="/dashboard/upload"
@@ -45,9 +50,12 @@ export default async function DashboardPage() {
     )
   }
 
-  // With data
+  const insights = generateInsights(holdings)
+  const sectorAllocation = aggregateBySector(holdings)
+  const sortedHoldings = [...holdings].sort((a, b) => b.current_value - a.current_value)
+
   return (
-    <div className="p-10 max-w-5xl mx-auto">
+    <div className="p-10 max-w-6xl mx-auto">
       <div className="mb-10">
         <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
           Hi {profile?.name?.split(' ')[0] || 'there'}
@@ -86,6 +94,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Insights */}
+      {insights.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-sm uppercase tracking-wider text-[#88b098] mb-3">What we noticed</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {insights.map((i) => (
+              <InsightCard key={i.id} insight={i} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        {sectorAllocation.slices.length > 0 && <SectorPie allocation={sectorAllocation} />}
+        <TopHoldingsBar holdings={sortedHoldings} />
+      </div>
+
       {/* Holdings table */}
       <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-[#1a4a2e] flex items-center justify-between">
@@ -102,13 +128,14 @@ export default async function DashboardPage() {
             <thead className="bg-[#0c2418]">
               <tr>
                 <th className="text-left text-xs uppercase tracking-wider text-[#88b098] px-6 py-3 font-medium">Scheme</th>
+                <th className="text-left text-xs uppercase tracking-wider text-[#88b098] px-6 py-3 font-medium">Sector</th>
                 <th className="text-right text-xs uppercase tracking-wider text-[#88b098] px-6 py-3 font-medium">Units</th>
                 <th className="text-right text-xs uppercase tracking-wider text-[#88b098] px-6 py-3 font-medium">Current Value</th>
                 <th className="text-right text-xs uppercase tracking-wider text-[#88b098] px-6 py-3 font-medium">Returns</th>
               </tr>
             </thead>
             <tbody>
-              {holdings.map((h) => (
+              {sortedHoldings.map((h) => (
                 <tr key={h.id} className="border-b border-[#1a4a2e] last:border-0 hover:bg-[#0c2418] transition">
                   <td className="px-6 py-4 text-sm">
                     <span>{h.scheme_name}</span>
@@ -118,6 +145,7 @@ export default async function DashboardPage() {
                       </span>
                     )}
                   </td>
+                  <td className="px-6 py-4 text-sm text-[#88b098]">{h.sector ?? '—'}</td>
                   <td className="px-6 py-4 text-sm text-right font-mono">{h.units.toFixed(2)}</td>
                   <td className="px-6 py-4 text-sm text-right font-mono">
                     ₹{h.current_value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
