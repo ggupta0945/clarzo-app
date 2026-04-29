@@ -29,4 +29,6 @@ export function verifyWebhookSignature(body: string, signature: string | null): 
   return timingSafeEqual(expectedBuf, sigBuf)
 }
 
-export const RAZORPAY_PLAN_ID = process.env.RAZORPAY_PLAN_ID || ''
+export function getRazorpayPlanId(): string {
+  return process.env.RAZORPAY_PLAN_ID?.trim() ?? ''
+}

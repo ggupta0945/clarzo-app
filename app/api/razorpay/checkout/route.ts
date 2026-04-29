@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { razorpayClient, RAZORPAY_PLAN_ID } from '@/lib/razorpay'
+import { getRazorpayPlanId, razorpayClient } from '@/lib/razorpay'
 
 // Creates a Razorpay subscription for the signed-in user, stashes the
 // subscription_id on our subscriptions row (keyed by user_id), and returns
@@ -11,6 +11,8 @@ import { razorpayClient, RAZORPAY_PLAN_ID } from '@/lib/razorpay'
 // it. We can extend by creating a new subscription if the user wants to
 // continue past year one.
 
+export const runtime = 'nodejs'
+
 export async function POST() {
   const supabase = await createClient()
   const {
@@ -19,7 +21,9 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  if (!RAZORPAY_PLAN_ID) {
+  const planId = getRazorpayPlanId()
+  if (!planId) {
+    console.error('Razorpay checkout misconfigured: RAZORPAY_PLAN_ID is missing in server runtime.')
     return NextResponse.json({ error: 'plan_not_configured' }, { status: 500 })
   }
 
@@ -28,7 +32,7 @@ export async function POST() {
   let subscription
   try {
     subscription = await rzp.subscriptions.create({
-      plan_id: RAZORPAY_PLAN_ID,
+      plan_id: planId,
       total_count: 12,
       customer_notify: 1,
       notes: { user_id: user.id, email: user.email ?? '' },
