@@ -25,11 +25,40 @@ export default function AskPage() {
   const [hydrating, setHydrating] = useState(true)
   const [history, setHistory] = useState<StoredMessage[]>([])
   const [clearing, setClearing] = useState(false)
+  const [rateLimit, setRateLimit] = useState<{
+    remaining: number | null
+    blocked: boolean
+    message: string | null
+  }>({ remaining: null, blocked: false, message: null })
   const greetTriggeredRef = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // Wrap fetch on the transport so we can read X-RateLimit-* headers and
+  // surface 429 responses as a banner instead of a generic stream error.
+  const transport = useRef(
+    new TextStreamChatTransport({
+      api: '/api/ask',
+      fetch: async (input, init) => {
+        const res = await fetch(input, init)
+        const remaining = res.headers.get('X-RateLimit-Remaining')
+        if (remaining != null) {
+          setRateLimit((prev) => ({ ...prev, remaining: Number(remaining) }))
+        }
+        if (res.status === 429) {
+          let message = "You've used your free queries for this month."
+          try {
+            const body = await res.clone().json()
+            if (body?.message) message = body.message
+          } catch {}
+          setRateLimit({ remaining: 0, blocked: true, message })
+        }
+        return res
+      },
+    }),
+  )
+
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new TextStreamChatTransport({ api: '/api/ask' }),
+    transport: transport.current,
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -110,7 +139,7 @@ export default function AskPage() {
   const hasAnyMessages = history.length > 0 || liveRender.length > 0 || isLoading
 
   return (
-    <div className="flex flex-col h-screen p-6 max-w-4xl mx-auto">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen px-4 py-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex-shrink-0 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl text-[#e4f0e8]" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -207,22 +236,38 @@ export default function AskPage() {
         <div ref={bottomRef} />
       </div>
 
+      {rateLimit.blocked && rateLimit.message && (
+        <div className="mt-4 flex-shrink-0 bg-[#3a1f0c] border border-[#7a4a1f] rounded-xl px-4 py-3 text-sm text-[#f5c842]">
+          {rateLimit.message}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex gap-3 mt-4 flex-shrink-0">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything about your portfolio..."
-          className="flex-1 bg-[#071a10] border border-[#1a4a2e] rounded-xl px-4 py-3 text-[#e4f0e8] placeholder-[#4a7a5a] focus:outline-none focus:border-[#34d399] transition"
-          disabled={isLoading || hydrating}
+          placeholder={
+            rateLimit.blocked
+              ? 'Free quota reached. Upgrade for unlimited queries.'
+              : 'Ask anything about your portfolio...'
+          }
+          className="flex-1 bg-[#071a10] border border-[#1a4a2e] rounded-xl px-4 py-3 text-[#e4f0e8] placeholder-[#4a7a5a] focus:outline-none focus:border-[#34d399] transition disabled:opacity-50"
+          disabled={isLoading || hydrating || rateLimit.blocked}
         />
         <button
           type="submit"
-          disabled={isLoading || hydrating || !input.trim()}
+          disabled={isLoading || hydrating || !input.trim() || rateLimit.blocked}
           className="bg-[#059669] hover:bg-[#0F6E56] text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           Send
         </button>
       </form>
+
+      {rateLimit.remaining != null && !rateLimit.blocked && rateLimit.remaining <= 5 && (
+        <p className="mt-2 text-xs text-[#88b098] text-right flex-shrink-0">
+          {rateLimit.remaining} {rateLimit.remaining === 1 ? 'query' : 'queries'} left this month
+        </p>
+      )}
     </div>
   )
 }
