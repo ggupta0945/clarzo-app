@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { captureEvent } from '@/lib/analytics/client'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -45,15 +46,31 @@ export default function UploadPage() {
       const data = await res.json()
 
       if (!res.ok || !data.success) {
+        captureEvent('upload_failed', {
+          source: file ? 'file' : 'manual_paste',
+          error: data.error ?? 'unknown',
+        })
         setError(data.message || 'Upload failed. Try again or paste manually.')
         setLoading(false)
         return
       }
 
+      captureEvent('upload_succeeded', {
+        source: file ? 'file' : 'manual_paste',
+        file_extension: file ? file.name.split('.').pop()?.toLowerCase() : null,
+        count: data.inserted,
+        matched: data.matched,
+        unmatched: data.unmatched,
+      })
+
       // Land on Ask Clarzo so the auto-greet kicks in immediately — that's
       // the wow moment. The dashboard is one click away in the nav.
       router.push('/dashboard/ask?welcome=true')
     } catch {
+      captureEvent('upload_failed', {
+        source: file ? 'file' : 'manual_paste',
+        error: 'network',
+      })
       setError('Network error. Try again.')
       setLoading(false)
     }

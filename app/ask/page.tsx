@@ -3,7 +3,8 @@
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { captureEvent } from '@/lib/analytics/client'
 
 const SUGGESTED = [
   'Is HDFC Bank a good long-term hold?',
@@ -24,30 +25,33 @@ export default function PublicAskPage() {
   // Mirror the /dashboard/ask transport shape: read X-RateLimit-Remaining
   // from headers, surface 429s as a paywall instead of a generic stream
   // error.
-  const transport = useRef(
-    new TextStreamChatTransport({
-      api: '/api/public-ask',
-      fetch: async (input, init) => {
-        const res = await fetch(input, init)
-        const remaining = res.headers.get('X-RateLimit-Remaining')
-        if (remaining != null) {
-          setRateLimit((prev) => ({ ...prev, remaining: Number(remaining) }))
-        }
-        if (res.status === 429) {
-          let message = "You've used your 3 free questions."
-          try {
-            const body = await res.clone().json()
-            if (body?.message) message = body.message
-          } catch {}
-          setRateLimit({ remaining: 0, blocked: true, message })
-        }
-        return res
-      },
-    }),
+  const transport = useMemo(
+    () =>
+      new TextStreamChatTransport({
+        api: '/api/public-ask',
+        fetch: async (input, init) => {
+          const res = await fetch(input, init)
+          const remaining = res.headers.get('X-RateLimit-Remaining')
+          if (remaining != null) {
+            setRateLimit((prev) => ({ ...prev, remaining: Number(remaining) }))
+          }
+          if (res.status === 429) {
+            let message = "You've used your 3 free questions."
+            try {
+              const body = await res.clone().json()
+              if (body?.message) message = body.message
+            } catch {}
+            captureEvent('public_chat_limit_hit')
+            setRateLimit({ remaining: 0, blocked: true, message })
+          }
+          return res
+        },
+      }),
+    [],
   )
 
   const { messages, sendMessage, status } = useChat({
-    transport: transport.current,
+    transport,
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -58,12 +62,20 @@ export default function PublicAskPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || isLoading || rateLimit.blocked) return
+    captureEvent('public_chat_message_sent', {
+      source: 'manual',
+      message_length: input.trim().length,
+    })
     sendMessage({ text: input })
     setInput('')
   }
 
   function handleSuggest(q: string) {
     if (isLoading || rateLimit.blocked) return
+    captureEvent('public_chat_message_sent', {
+      source: 'suggested',
+      message_length: q.length,
+    })
     sendMessage({ text: q })
   }
 

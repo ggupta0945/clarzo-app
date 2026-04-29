@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { captureEvent } from '@/lib/analytics/client'
 
 type Goal = {
   id: string
@@ -71,6 +72,9 @@ export default function GoalsPage() {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error ?? 'save_failed')
       }
+      captureEvent('goal_created', {
+        preset: PRESET_GOALS.some((goal) => goal.title === draft.title.trim()),
+      })
       setShowAdd(false)
       await loadGoals()
     } catch (e) {
