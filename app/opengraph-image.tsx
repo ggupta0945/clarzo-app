@@ -19,7 +19,7 @@ export default function Image() {
           flexDirection: 'column',
           padding: 80,
           color: '#e4f0e8',
-          fontFamily: 'sans-serif',
+          fontFamily: '"Book Antiqua", Palatino, "Palatino Linotype", Georgia, serif',
         }}
       >
         <div
@@ -46,7 +46,7 @@ export default function Image() {
           <div
             style={{
               fontSize: 96,
-              fontFamily: 'serif',
+              fontFamily: '"Book Antiqua", Palatino, "Palatino Linotype", Georgia, serif',
               fontWeight: 700,
               lineHeight: 1.05,
               letterSpacing: -2,

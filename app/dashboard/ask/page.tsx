@@ -184,7 +184,7 @@ function AskPageInner() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen px-4 py-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex-shrink-0 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl text-[#e4f0e8]" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="text-3xl text-[#e4f0e8]">
             Ask Clarzo
           </h1>
           <p className="text-[#88b098] mt-1 text-sm">

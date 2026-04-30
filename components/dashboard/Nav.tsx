@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/dashboard/upload', label: 'Upload Portfolio' },
   { href: '/dashboard/ask', label: 'Ask Clarzo' },
   { href: '/dashboard/goals', label: 'Goals' },
+  { href: '/discover', label: 'Discover' },
   { href: '/dashboard/upgrade', label: 'Upgrade' },
 ]
 
@@ -34,7 +35,7 @@ export function DashboardNav({ profile }: { profile: Profile }) {
     <>
       {/* Mobile top bar */}
       <header className="lg:hidden sticky top-0 z-30 bg-[#071a10] border-b border-[#1a4a2e] flex items-center justify-between px-4 h-14">
-        <Link href="/dashboard" className="text-xl text-[#34d399]" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <Link href="/dashboard" className="text-xl text-[#34d399]">
           Clarzo
         </Link>
         <button
@@ -69,7 +70,7 @@ export function DashboardNav({ profile }: { profile: Profile }) {
         `}
       >
         <div className="mb-10 flex items-center justify-between">
-          <h1 className="text-2xl text-[#34d399]" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="text-2xl text-[#34d399]">
             Clarzo
           </h1>
           <button

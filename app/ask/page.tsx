@@ -94,7 +94,6 @@ export default function PublicAskPage() {
         <Link
           href="/"
           className="text-2xl text-[#34d399]"
-          style={{ fontFamily: 'Playfair Display, serif' }}
         >
           Clarzo
         </Link>
@@ -116,10 +115,7 @@ export default function PublicAskPage() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-10 py-8">
         {!hasMessages ? (
           <div className="max-w-2xl mx-auto">
-            <h1
-              className="text-3xl sm:text-4xl mb-3"
-              style={{ fontFamily: 'Playfair Display, serif' }}
-            >
+            <h1 className="text-3xl sm:text-4xl mb-3">
               Ask Clarzo anything about money.
             </h1>
             <p className="text-[#88b098] mb-8">

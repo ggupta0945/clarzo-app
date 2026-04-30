@@ -27,14 +27,14 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#040f0a] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl mb-3 text-[#34d399]" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="text-4xl mb-3 text-[#34d399]">
             Clarzo
           </h1>
           <p className="text-[#88b098]">See your money. Understand your life.</p>
         </div>
 
         <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-8">
-          <h2 className="text-xl text-[#e4f0e8] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h2 className="text-xl text-[#e4f0e8] mb-2">
             Welcome
           </h2>
           <p className="text-[#88b098] text-sm mb-6">
