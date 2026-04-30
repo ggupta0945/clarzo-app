@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { useChat } from '@ai-sdk/react'
-import { TextStreamChatTransport, isTextUIPart } from 'ai'
+import { TextStreamChatTransport, isTextUIPart, type UIMessage } from 'ai'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -429,12 +429,16 @@ function StockDetail({ h, onAskClarzo, totalValue }: { h: Holding; onAskClarzo: 
 }
 
 // ── stock chat panel ───────────────────────────────────────────────────────────
+const SUGGESTIONS = ['Should I buy more?', 'What are the risks?', 'Set a stop-loss level', "What's my break-even?"]
+
 function StockChatPanel({ h, onClose, totalValue }: { h: Holding; onClose: () => void; totalValue: number }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
-  const initialized = useRef(false)
+  const contextSent = useRef(false)
   const color = SECTOR_COLORS[h.sector] || '#88b098'
   const weight = totalValue > 0 ? (h.value / totalValue * 100).toFixed(1) : '0.0'
+
+  const CONTEXT_PREFIX = `[stock-ctx] ${h.name} | qty:${h.qty} | avg:₹${h.avg.toFixed(2)} | cmp:₹${h.price.toFixed(2)} | invested:₹${fmt(h.invested)} | value:₹${fmt(h.value)} | pnl:${h.pnl >= 0 ? '+' : '−'}₹${fmt(Math.abs(h.pnl))} (${h.pct.toFixed(1)}%) | weight:${weight}% of portfolio || `
 
   const { messages, sendMessage, status } = useChat({
     transport: new TextStreamChatTransport({ api: '/api/ask' }),
@@ -442,25 +446,37 @@ function StockChatPanel({ h, onClose, totalValue }: { h: Holding; onClose: () =>
   const isLoading = status === 'submitted' || status === 'streaming'
 
   useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
-    const ctx = `I want to review my ${h.name} position. I hold ${h.qty} shares at avg buy price ₹${h.avg.toFixed(2)} (total invested: ₹${fmt(h.invested)}). Current market price is ₹${h.price.toFixed(2)}, current value ₹${fmt(h.value)}, unrealised ${h.pnl >= 0 ? 'gain' : 'loss'} of ${h.pnl >= 0 ? '+' : '−'}₹${fmt(Math.abs(h.pnl))} (${h.pct.toFixed(1)}%). It is ${weight}% of my total portfolio. What should I know about this position?`
-    sendMessage({ text: ctx })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const INITIAL_PROMPT = `I want to review my ${h.name} position`
+  function send(userText: string) {
+    if (isLoading) return
+    if (!contextSent.current) {
+      contextSent.current = true
+      sendMessage({ text: `${CONTEXT_PREFIX}${userText}` })
+    } else {
+      sendMessage({ text: userText })
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
-    sendMessage({ text: input })
+    if (!input.trim()) return
+    send(input)
     setInput('')
   }
+
+  // Strip context prefix when displaying the first user message
+  function displayText(m: UIMessage) {
+    const text = m.parts.filter(isTextUIPart).map(p => p.text).join('')
+    if (m.role === 'user' && text.startsWith(CONTEXT_PREFIX)) return text.slice(CONTEXT_PREFIX.length)
+    return text
+  }
+
+  const hasMessages = messages.some(m => {
+    const t = m.parts.filter(isTextUIPart).map(p => p.text).join('')
+    return t.length > 0
+  })
 
   return (
     <div className="flex flex-col h-full bg-[#040f0a]">
@@ -492,10 +508,24 @@ function StockChatPanel({ h, onClose, totalValue }: { h: Holding; onClose: () =>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+          {/* empty state — show suggestions before any message is sent */}
+          {!hasMessages && !isLoading && (
+            <div className="flex flex-col gap-3 pt-2">
+              <p className="text-xs text-[#4a7a5a] text-center">Ask anything about this position</p>
+              <div className="grid grid-cols-1 gap-2">
+                {SUGGESTIONS.map(q => (
+                  <button key={q} onClick={() => send(q)}
+                    className="text-left px-3 py-2.5 rounded-xl bg-[#071a10] border border-[#1a4a2e] text-[#88b098] text-xs hover:border-[#34d399] hover:text-[#e4f0e8] transition">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {messages.map((m) => {
-            const text = m.parts.filter(isTextUIPart).map(p => p.text).join('')
-            const isInitial = m.role === 'user' && text.startsWith(INITIAL_PROMPT)
-            if (!text || isInitial) return null
+            const text = displayText(m)
+            if (!text) return null
             return (
               <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
@@ -523,10 +553,11 @@ function StockChatPanel({ h, onClose, totalValue }: { h: Holding; onClose: () =>
           <div ref={bottomRef} />
         </div>
 
-        {messages.length >= 2 && messages[messages.length - 1]?.role === 'assistant' && (
+        {/* follow-up suggestions after first response */}
+        {hasMessages && !isLoading && messages[messages.length - 1]?.role === 'assistant' && (
           <div className="px-4 pb-2 flex gap-2 flex-wrap flex-shrink-0">
-            {['Should I buy more?', 'What are the risks?', 'Set a stop-loss level'].map(q => (
-              <button key={q} onClick={() => !isLoading && sendMessage({ text: q })}
+            {SUGGESTIONS.slice(0, 3).map(q => (
+              <button key={q} onClick={() => send(q)}
                 className="text-xs px-3 py-1.5 rounded-full bg-[#071a10] border border-[#1a4a2e] text-[#88b098] hover:border-[#34d399] hover:text-[#e4f0e8] transition">
                 {q}
               </button>
