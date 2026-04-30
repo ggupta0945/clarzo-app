@@ -94,7 +94,7 @@ export default function GoalsPage() {
     <div className="px-4 py-6 sm:p-10 max-w-4xl mx-auto">
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl text-[#e4f0e8]" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="text-3xl text-[#e4f0e8]">
             Goals
           </h1>
           <p className="text-[#88b098] text-sm mt-1">What are you saving for?</p>
@@ -142,7 +142,6 @@ function EmptyState({ onPick }: { onPick: (title: string) => void }) {
         <div className="text-5xl mb-4">🎯</div>
         <h2
           className="text-2xl text-[#e4f0e8] mb-2"
-          style={{ fontFamily: 'Playfair Display, serif' }}
         >
           What are you saving for?
         </h2>
@@ -218,7 +217,6 @@ function AddGoalModal({
       <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6 max-w-md w-full">
         <h2
           className="text-xl text-[#e4f0e8] mb-4"
-          style={{ fontFamily: 'Playfair Display, serif' }}
         >
           New goal
         </h2>

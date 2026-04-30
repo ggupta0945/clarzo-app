@@ -194,9 +194,9 @@ function buildWeeklyDigestHtml(data: DigestData): string {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#040f0a; padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px; font-family:'Book Antiqua',Palatino,'Palatino Linotype',Georgia,serif;">
           <tr>
-            <td style="font-family:Georgia,serif; font-size:30px; color:#34d399; padding-bottom:8px;">Clarzo</td>
+            <td style="font-family:'Book Antiqua',Palatino,'Palatino Linotype',Georgia,serif; font-size:30px; color:#34d399; padding-bottom:8px;">Clarzo</td>
           </tr>
           <tr>
             <td style="color:#88b098; font-size:15px; padding-bottom:28px;">Hi ${escapeHtml(data.name)}, here's your week.</td>
@@ -204,7 +204,7 @@ function buildWeeklyDigestHtml(data: DigestData): string {
           <tr>
             <td style="background:#071a10; border:1px solid #1a4a2e; border-radius:16px; padding:24px;">
               <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#88b098; margin-bottom:8px;">Net worth</div>
-              <div style="font-family:Georgia,serif; font-size:38px; line-height:1.1;">${formatInr(data.netWorth)}</div>
+              <div style="font-family:'Book Antiqua',Palatino,'Palatino Linotype',Georgia,serif; font-size:38px; line-height:1.1;">${formatInr(data.netWorth)}</div>
               <div style="font-family:'Courier New',monospace; color:${pnlColor}; margin-top:10px; font-size:14px;">
                 ${pnlArrow} ${pnlPrefix}${formatInr(Math.abs(data.pnl))} (${data.pnlPct.toFixed(1)}%) all-time
               </div>

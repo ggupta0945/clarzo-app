@@ -15,7 +15,7 @@ export const theme = {
     blue: '#60a5fa',
   },
   fonts: {
-    serif: 'Playfair Display, serif',
-    sans: 'DM Sans, sans-serif',
+    serif: '"Book Antiqua", Palatino, "Palatino Linotype", Georgia, serif',
+    sans: '"Book Antiqua", Palatino, "Palatino Linotype", Georgia, serif',
   },
 }

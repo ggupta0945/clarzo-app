@@ -19,7 +19,7 @@ export default function Icon() {
           alignItems: 'center',
           justifyContent: 'center',
           color: '#34d399',
-          fontFamily: 'serif',
+          fontFamily: '"Book Antiqua", Palatino, "Palatino Linotype", Georgia, serif',
           fontWeight: 700,
           borderRadius: 6,
         }}

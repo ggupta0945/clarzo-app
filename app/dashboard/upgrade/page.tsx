@@ -89,7 +89,6 @@ export default function UpgradePage() {
 
       <h1
         className="text-3xl text-[#e4f0e8] mb-3"
-        style={{ fontFamily: 'Playfair Display, serif' }}
       >
         Upgrade to Clarzo Pro
       </h1>
@@ -103,7 +102,6 @@ export default function UpgradePage() {
             <p className="text-sm text-[#88b098]">Free</p>
             <p
               className="text-3xl text-[#e4f0e8]"
-              style={{ fontFamily: 'Playfair Display, serif' }}
             >
               ₹0
             </p>
@@ -130,7 +128,6 @@ export default function UpgradePage() {
             <p className="text-sm text-[#88b098]">Pro</p>
             <p
               className="text-3xl text-[#e4f0e8]"
-              style={{ fontFamily: 'Playfair Display, serif' }}
             >
               ₹99
               <span className="text-base text-[#88b098]"> / mo</span>
