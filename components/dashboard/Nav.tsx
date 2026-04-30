@@ -9,6 +9,7 @@ type Profile = { name: string | null; email: string | null }
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/stocks', label: 'My Stocks' },
   { href: '/dashboard/upload', label: 'Upload Portfolio' },
   { href: '/dashboard/ask', label: 'Ask Clarzo' },
   { href: '/dashboard/goals', label: 'Goals' },
