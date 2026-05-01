@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
 import { sectors, gptResponses, type Company, type Sector } from './data'
 
 // Three views in one page: sectors grid → companies in a sector → company
@@ -16,6 +17,21 @@ export default function DiscoverPage() {
   const [filter, setFilter] = useState('')
   const [sectorId, setSectorId] = useState<string | null>(null)
   const [companyIdx, setCompanyIdx] = useState<number | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(!!data.session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsLoggedIn(!!session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const sector: Sector | null = useMemo(
     () => (sectorId ? sectors.find((s) => s.id === sectorId) ?? null : null),
@@ -45,18 +61,29 @@ export default function DiscoverPage() {
             Clarzo
           </Link>
           <div className="flex items-center gap-3 text-sm">
-            <Link
-              href="/ask"
-              className="hidden text-[#a8cdb7] transition hover:text-[#e4f0e8] sm:inline"
-            >
-              Ask free
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full bg-[#059669] px-5 py-2 font-medium text-white transition hover:bg-[#0f6e56]"
-            >
-              Sign in
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-full bg-[#059669] px-5 py-2 font-medium text-white transition hover:bg-[#0f6e56]"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/ask"
+                  className="hidden text-[#a8cdb7] transition hover:text-[#e4f0e8] sm:inline"
+                >
+                  Ask free
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-full bg-[#059669] px-5 py-2 font-medium text-white transition hover:bg-[#0f6e56]"
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -287,10 +314,12 @@ function CompaniesView({
         </div>
       )}
 
-      <CtaBanner
-        title="Researching investments? See how they fit your portfolio."
-        body="Connect your existing portfolio and Clarzo will show you how any new investment impacts your allocation, risk, and goals."
-      />
+      {!isLoggedIn && (
+        <CtaBanner
+          title="Researching investments? See how they fit your portfolio."
+          body="Connect your existing portfolio and Clarzo will show you how any new investment impacts your allocation, risk, and goals."
+        />
+      )}
     </div>
   )
 }
@@ -487,10 +516,12 @@ function CompanyDetail({ company, sector }: { company: Company; sector: Sector }
         </div>
       </div>
 
-      <CtaBanner
-        title="Like what you see? Check how it fits your portfolio."
-        body={`Already invested in ${sector.name.toLowerCase()}? Clarzo shows your current exposure and suggests optimal allocation.`}
-      />
+      {!isLoggedIn && (
+        <CtaBanner
+          title="Like what you see? Check how it fits your portfolio."
+          body={`Already invested in ${sector.name.toLowerCase()}? Clarzo shows your current exposure and suggests optimal allocation.`}
+        />
+      )}
     </div>
   )
 }
