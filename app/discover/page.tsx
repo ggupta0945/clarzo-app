@@ -150,9 +150,9 @@ export default function DiscoverPage() {
 
         {!sector && <SectorsGrid filter={filter} onSelect={showCompanies} />}
         {sector && !company && (
-          <CompaniesView sector={sector} onSelect={showDetail} />
+          <CompaniesView sector={sector} onSelect={showDetail} isLoggedIn={isLoggedIn} />
         )}
-        {sector && company && <CompanyDetail company={company} sector={sector} />}
+        {sector && company && <CompanyDetail company={company} sector={sector} isLoggedIn={isLoggedIn} />}
       </section>
     </main>
   )
@@ -206,9 +206,11 @@ function SectorsGrid({
 function CompaniesView({
   sector,
   onSelect,
+  isLoggedIn,
 }: {
   sector: Sector
   onSelect: (idx: number) => void
+  isLoggedIn: boolean
 }) {
   return (
     <div className="pb-20">
@@ -324,7 +326,7 @@ function CompaniesView({
   )
 }
 
-function CompanyDetail({ company, sector }: { company: Company; sector: Sector }) {
+function CompanyDetail({ company, sector, isLoggedIn }: { company: Company; sector: Sector; isLoggedIn: boolean }) {
   const [chat, setChat] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [showSugs, setShowSugs] = useState(true)
