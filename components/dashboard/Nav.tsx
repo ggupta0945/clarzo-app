@@ -13,7 +13,7 @@ const LINKS = [
   { href: '/dashboard/upload', label: 'Upload Portfolio' },
   { href: '/dashboard/ask', label: 'Ask Clarzo' },
   { href: '/dashboard/goals', label: 'Goals' },
-  { href: '/discover', label: 'Discover' },
+  { href: '/dashboard/discover', label: 'Discover' },
   { href: '/dashboard/upgrade', label: 'Upgrade' },
 ]
 
