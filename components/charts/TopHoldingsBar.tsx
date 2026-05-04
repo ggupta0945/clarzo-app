@@ -16,27 +16,28 @@ export function TopHoldingsBar({ holdings }: Props) {
   }))
 
   return (
-    <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6">
-      <h3 className="text-sm uppercase tracking-wider text-[#88b098] mb-4">Top holdings</h3>
-      <div className="h-72">
+    <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
+      <h3 className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">Top holdings</h3>
+      <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
             <XAxis type="number" hide />
             <YAxis
               type="category"
               dataKey="name"
-              width={120}
-              tick={{ fill: '#cfe2d6', fontSize: 12 }}
+              width={110}
+              tick={{ fill: 'var(--fg)', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
-              cursor={{ fill: 'rgba(52, 211, 153, 0.05)' }}
+              cursor={{ fill: 'rgba(68, 76, 231, 0.06)' }}
               contentStyle={{
-                background: '#0c2418',
-                border: '1px solid #1a4a2e',
-                borderRadius: 8,
-                color: '#e6f1ea',
+                background: '#ffffff',
+                border: '1px solid #c7d7fe',
+                borderRadius: 12,
+                color: 'var(--fg)',
+                boxShadow: '0 4px 12px rgba(31, 35, 91, 0.08)',
               }}
               formatter={(value) => {
                 const v = typeof value === 'number' ? value : Number(value)
@@ -50,9 +51,9 @@ export function TopHoldingsBar({ holdings }: Props) {
                 return p?.fullName ?? ''
               }}
             />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
               {data.map((d, i) => (
-                <Cell key={i} fill={d.pnl_pct >= 0 ? '#34d399' : '#ef4444'} />
+                <Cell key={i} fill={d.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'} />
               ))}
             </Bar>
           </BarChart>

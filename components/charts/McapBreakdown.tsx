@@ -1,15 +1,13 @@
 import type { Allocation } from '@/lib/allocation'
 
 const COLORS: Record<string, string> = {
-  'Large cap': '#34d399',
-  'Mid cap': '#f5c842',
-  'Small cap': '#fb923c',
-  'Micro cap': '#ef4444',
-  Unclassified: '#4a7a5a',
+  'Large cap': 'var(--accent)',
+  'Mid cap': '#6172f3',
+  'Small cap': '#a4bcfd',
+  'Micro cap': '#fb923c',
+  Unclassified: 'var(--fg-subtle)',
 }
 
-// Stable ordering so Large always renders above Mid above Small etc, even when
-// the user has 0 of a bucket between two non-empty ones.
 const ORDER = ['Large cap', 'Mid cap', 'Small cap', 'Micro cap', 'Unclassified']
 
 export function McapBreakdown({ allocation }: { allocation: Allocation }) {
@@ -18,23 +16,23 @@ export function McapBreakdown({ allocation }: { allocation: Allocation }) {
   )
 
   return (
-    <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6">
-      <h3 className="text-sm uppercase tracking-wider text-[#88b098] mb-4">Market cap mix</h3>
-      <div className="space-y-3">
+    <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
+      <h3 className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">Market cap mix</h3>
+      <div className="space-y-2">
         {sorted.map((item) => (
           <div key={item.label}>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-[#e4f0e8]">{item.label}</span>
-              <span className="font-mono text-[#88b098]">
+            <div className="flex justify-between text-xs mb-0.5">
+              <span className="text-fg font-medium">{item.label}</span>
+              <span className="text-fg-muted">
                 {item.pct.toFixed(1)}% · {item.count}
               </span>
             </div>
-            <div className="h-2 bg-[#0c2418] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-accent-soft rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, item.pct)}%`,
-                  background: COLORS[item.label] || '#4a7a5a',
+                  background: COLORS[item.label] || 'var(--fg-subtle)',
                 }}
               />
             </div>

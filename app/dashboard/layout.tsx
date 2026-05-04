@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardNav } from '@/components/dashboard/Nav'
 import { AnalyticsIdentity } from '@/components/analytics/AnalyticsIdentity'
+import { FloatingAskClarzo } from '@/components/dashboard/FloatingAskClarzo'
 
 export default async function DashboardLayout({
   children,
@@ -20,10 +21,11 @@ export default async function DashboardLayout({
     .single()
 
   return (
-    <div className="min-h-screen bg-[#040f0a] text-[#e4f0e8] lg:flex">
+    <div className="min-h-screen bg-canvas text-fg lg:flex">
       <AnalyticsIdentity user={{ id: user.id, email: user.email, name: profile?.name ?? null }} />
       <DashboardNav profile={{ name: profile?.name ?? null, email: user.email ?? null }} />
       <main className="flex-1 lg:overflow-y-auto">{children}</main>
+      <FloatingAskClarzo />
     </div>
   )
 }

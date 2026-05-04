@@ -28,9 +28,9 @@ export default function AskPage() {
       fallback={
         <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] lg:h-screen">
           <div className="flex space-x-1.5">
-            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" />
-            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <span className="w-2 h-2 bg-accent rounded-full animate-bounce" />
+            <span className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
         </div>
       }
@@ -182,12 +182,12 @@ function AskPageInner() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen px-4 py-4 sm:p-6 max-w-4xl mx-auto">
-      <div className="mb-6 flex-shrink-0 flex items-start justify-between gap-4">
+      <div className="mb-5 flex-shrink-0 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl text-[#e4f0e8]">
+          <h1 className="text-xl font-semibold text-fg">
             Ask Clarzo
           </h1>
-          <p className="text-[#88b098] mt-1 text-sm">
+          <p className="text-fg-muted mt-0.5 text-xs">
             Anything about your portfolio. Plain English.
           </p>
         </div>
@@ -195,38 +195,38 @@ function AskPageInner() {
           <button
             onClick={handleClear}
             disabled={clearing || isLoading}
-            className="text-xs text-[#88b098] hover:text-[#34d399] disabled:opacity-50 transition shrink-0"
+            className="text-xs font-medium text-fg-muted hover:text-accent disabled:opacity-50 transition shrink-0"
           >
             {clearing ? 'Resetting…' : 'Reset conversation'}
           </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
         {hydrating && (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="flex space-x-1.5">
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         )}
 
         {!hydrating && !hasAnyMessages && (
-          <div className="flex flex-col items-center justify-center h-full gap-6 pb-10">
+          <div className="flex flex-col items-center justify-center h-full gap-5 pb-8">
             <div className="text-center max-w-md">
-              <p className="text-[#e4f0e8] text-lg">👋 I&apos;ve looked at your portfolio.</p>
-              <p className="text-[#88b098] text-sm mt-2">
+              <p className="text-fg text-base font-medium">👋 I&apos;ve looked at your portfolio.</p>
+              <p className="text-fg-muted text-xs mt-1.5">
                 Ask me anything — what&apos;s working, what&apos;s risky, what to do next.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 w-full">
               {SUGGESTED_QUESTIONS.map((q) => (
                 <button
                   key={q}
                   onClick={() => handleSuggest(q)}
-                  className="text-left px-4 py-3 rounded-xl bg-[#071a10] border border-[#1a4a2e] text-[#e4f0e8] text-sm hover:border-[#34d399] hover:bg-[#0c2418] transition"
+                  className="text-left px-3 py-2.5 rounded-xl bg-surface border border-line text-fg text-xs hover:border-accent hover:bg-accent-soft transition shadow-sm"
                 >
                   {q}
                 </button>
@@ -253,9 +253,9 @@ function AskPageInner() {
         {isLoading && liveRender.every((m) => m.role === 'user') && (
           <Bubble role="assistant">
             <div className="flex space-x-1">
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-[#34d399] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </Bubble>
         )}
@@ -267,7 +267,7 @@ function AskPageInner() {
                 key={q}
                 onClick={() => handleSuggest(q)}
                 disabled={isLoading}
-                className="text-left px-3 py-2 rounded-lg bg-[#071a10] border border-[#1a4a2e] text-[#88b098] text-xs hover:border-[#34d399] hover:text-[#e4f0e8] disabled:opacity-50 transition"
+                className="text-left px-2.5 py-1.5 rounded-lg bg-surface border border-line text-fg-muted text-[11px] hover:border-accent hover:text-fg disabled:opacity-50 transition"
               >
                 {q}
               </button>
@@ -279,18 +279,18 @@ function AskPageInner() {
       </div>
 
       {rateLimit.blocked && rateLimit.message && (
-        <div className="mt-4 flex-shrink-0 bg-[#3a1f0c] border border-[#7a4a1f] rounded-xl px-4 py-3 text-sm text-[#f5c842] flex items-center justify-between gap-3">
+        <div className="mt-3 flex-shrink-0 bg-warning-soft border border-warning/40 rounded-xl px-3.5 py-2.5 text-xs text-warning flex items-center justify-between gap-3">
           <span>{rateLimit.message}</span>
           <a
             href="/dashboard/upgrade"
-            className="bg-[#059669] hover:bg-[#0F6E56] text-white px-4 py-1.5 rounded-full text-xs font-medium transition shrink-0"
+            className="bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-full text-[11px] font-medium transition shrink-0"
           >
             Upgrade
           </a>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-3 mt-4 flex-shrink-0">
+      <form onSubmit={handleSubmit} className="flex gap-2 mt-3 flex-shrink-0">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -299,20 +299,20 @@ function AskPageInner() {
               ? 'Free quota reached. Upgrade for unlimited queries.'
               : 'Ask anything about your portfolio...'
           }
-          className="flex-1 bg-[#071a10] border border-[#1a4a2e] rounded-xl px-4 py-3 text-[#e4f0e8] placeholder-[#4a7a5a] focus:outline-none focus:border-[#34d399] transition disabled:opacity-50"
+          className="flex-1 bg-surface border border-line-strong rounded-xl px-3.5 py-2.5 text-sm text-fg placeholder-fg-subtle focus:outline-none focus:border-accent transition disabled:opacity-50 shadow-sm"
           disabled={isLoading || hydrating || rateLimit.blocked}
         />
         <button
           type="submit"
           disabled={isLoading || hydrating || !input.trim() || rateLimit.blocked}
-          className="bg-[#059669] hover:bg-[#0F6E56] text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="bg-accent hover:bg-accent-hover text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
         >
           Send
         </button>
       </form>
 
       {rateLimit.remaining != null && !rateLimit.blocked && rateLimit.remaining <= 5 && (
-        <p className="mt-2 text-xs text-[#88b098] text-right flex-shrink-0">
+        <p className="mt-2 text-[11px] text-fg-muted text-right flex-shrink-0">
           {rateLimit.remaining} {rateLimit.remaining === 1 ? 'query' : 'queries'} left this month
         </p>
       )}
@@ -324,16 +324,18 @@ function Bubble({ role, children }: { role: 'user' | 'assistant'; children: Reac
   return (
     <div className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+        className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 ${
           role === 'user'
-            ? 'bg-[#059669] text-white'
-            : 'bg-[#071a10] border border-[#1a4a2e] text-[#e4f0e8]'
+            ? 'bg-accent text-white'
+            : 'bg-surface border border-line text-fg shadow-sm'
         }`}
       >
         {role === 'assistant' && (
-          <p className="text-xs text-[#34d399] mb-1 font-medium">Clarzo</p>
+          <p className="text-[10px] text-accent mb-1 font-semibold uppercase tracking-wider">Clarzo</p>
         )}
-        <p className="text-sm whitespace-pre-wrap leading-relaxed">{children}</p>
+        {/* Wrapper is a div, not a p — children may include block elements
+            (loading dots) which would be invalid inside a <p>. */}
+        <div className="text-sm whitespace-pre-wrap leading-relaxed">{children}</div>
       </div>
     </div>
   )

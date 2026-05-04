@@ -35,16 +35,16 @@ export function EmailSampleButton() {
   }
 
   return (
-    <div className="flex flex-col items-start sm:items-end gap-2">
+    <div className="flex flex-col items-start sm:items-end gap-1.5">
       <button
         onClick={sendSample}
         disabled={state === 'sending'}
-        className="border border-[#1a4a2e] hover:border-[#34d399] hover:bg-[#0c2418] disabled:opacity-50 text-[#e4f0e8] px-4 py-2 rounded-full text-sm transition"
+        className="bg-surface border border-line-strong hover:border-accent hover:bg-accent-soft disabled:opacity-50 text-fg px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm"
       >
         {state === 'sending' ? 'Sending sample...' : state === 'sent' ? 'Sample sent' : 'Email me a sample'}
       </button>
       {message && (
-        <p className={`text-xs ${state === 'error' ? 'text-[#f5c842]' : 'text-[#88b098]'}`}>
+        <p className={`text-[11px] ${state === 'error' ? 'text-warning' : 'text-fg-muted'}`}>
           {message}
         </p>
       )}

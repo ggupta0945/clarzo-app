@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchLiveStockPrices } from '@/lib/stock-prices'
+import { fetchSectorsForNames } from '@/lib/sector-lookup'
 
 export type EnrichedHolding = {
   id: string
@@ -54,21 +56,25 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
     navMap = new Map((navs ?? []).map((n) => [n.isin as string, Number(n.nav)]))
   }
 
-  // Enrich with sector/mcap/corp_group from the companies reference table.
-  // Stocks not in the seed fall through with nulls, which the dashboard
-  // groups under "Unclassified".
+  // Enrich with sector/mcap/corp_group/symbol from the companies reference
+  // table. Stocks not in the seed fall through with nulls, which the
+  // dashboard groups under "Unclassified".
   const allIsins = holdings.map((h) => h.isin).filter((v): v is string => Boolean(v))
-  let companyMap = new Map<string, { sector: string | null; mcap_category: string | null; corp_group: string | null }>()
+  let companyMap = new Map<
+    string,
+    { sector: string | null; mcap_category: string | null; corp_group: string | null; symbol: string | null }
+  >()
   if (allIsins.length > 0) {
     const { data: companies } = await supabase
       .from('companies')
-      .select('isin, sector, mcap_category, corp_group')
+      .select('isin, symbol, sector, mcap_category, corp_group')
       .in('isin', allIsins)
 
     companyMap = new Map(
       (companies ?? []).map((c) => [
         c.isin as string,
         {
+          symbol: (c.symbol as string) ?? null,
           sector: (c.sector as string) ?? null,
           mcap_category: (c.mcap_category as string) ?? null,
           corp_group: (c.corp_group as string) ?? null,
@@ -77,16 +83,48 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
     )
   }
 
+  // Live prices for stocks. Pull tickers via the companies map; gracefully
+  // degrade to the stored current_price when Yahoo is rate-limited or the
+  // symbol isn't in our reference table.
+  const stockSymbols: string[] = []
+  for (const h of holdings) {
+    if (h.asset_type !== 'stock' || !h.isin) continue
+    const sym = companyMap.get(h.isin)?.symbol
+    if (sym) stockSymbols.push(sym)
+  }
+  const livePriceMap =
+    stockSymbols.length > 0 ? await fetchLiveStockPrices(stockSymbols) : new Map<string, number>()
+
+  // Fallback sector enrichment for stocks the seed doesn't classify. Yahoo's
+  // search endpoint returns `sectorDisp` per quote, so we hit it for any
+  // stock whose companies row is missing or has no sector. Cached for 24h.
+  const stocksMissingSector = holdings
+    .filter(
+      (h) =>
+        h.asset_type === 'stock' &&
+        !(h.isin && companyMap.get(h.isin)?.sector),
+    )
+    .map((h) => h.scheme_name as string)
+  const lookedUpSectors =
+    stocksMissingSector.length > 0
+      ? await fetchSectorsForNames(stocksMissingSector)
+      : new Map<string, string>()
+
   return holdings.map((h) => {
     const units = Number(h.units)
     const avg_cost = h.avg_cost != null ? Number(h.avg_cost) : null
     const asset_type = (h.asset_type as string) ?? 'mutual_fund'
 
+    const meta = h.isin ? companyMap.get(h.isin) : undefined
+    const live_stock_price =
+      asset_type === 'stock' && meta?.symbol
+        ? livePriceMap.get(meta.symbol.toUpperCase()) ?? null
+        : null
+
     const current_nav =
       asset_type === 'stock'
-        ? h.current_price != null
-          ? Number(h.current_price)
-          : null
+        ? live_stock_price ??
+          (h.current_price != null ? Number(h.current_price) : null)
         : h.isin
           ? navMap.get(h.isin) ?? null
           : null
@@ -96,7 +134,11 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
     const pnl = current_value - invested
     const pnl_pct = invested > 0 ? (pnl / invested) * 100 : 0
 
-    const meta = h.isin ? companyMap.get(h.isin) : undefined
+    const sector =
+      meta?.sector ??
+      (asset_type === 'stock'
+        ? lookedUpSectors.get((h.scheme_name as string).toUpperCase()) ?? null
+        : null)
 
     return {
       id: h.id as string,
@@ -110,7 +152,7 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
       invested,
       pnl,
       pnl_pct,
-      sector: meta?.sector ?? null,
+      sector,
       mcap_category: meta?.mcap_category ?? null,
       corp_group: meta?.corp_group ?? null,
     }

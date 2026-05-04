@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
+import { DM_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 import { PostHogProvider } from '@/lib/analytics/client'
 import "./globals.css";
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans-loaded",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.clarzo.ai'),
@@ -27,14 +36,19 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Theme is persisted in a cookie so the server renders the right palette
+  // on first paint — avoids the light-flash-then-dark hydration glitch.
+  const cookieStore = await cookies()
+  const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light'
+
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-[#040f0a] text-[#e4f0e8]">
+    <html lang="en" data-theme={theme} className={`h-full antialiased ${dmSans.variable}`}>
+      <body className="min-h-full bg-canvas text-fg">
         <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
