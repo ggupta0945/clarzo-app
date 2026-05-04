@@ -91,18 +91,16 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="px-4 py-6 sm:p-10 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between gap-4 mb-8">
+    <div className="px-4 py-4 sm:p-8 max-w-4xl mx-auto">
+      <div className="flex items-start justify-between gap-4 mb-5">
         <div>
-          <h1 className="text-3xl text-[#e4f0e8]">
-            Goals
-          </h1>
-          <p className="text-[#88b098] text-sm mt-1">What are you saving for?</p>
+          <h1 className="text-xl font-semibold text-fg">Goals</h1>
+          <p className="text-fg-muted text-xs mt-0.5">What are you saving for?</p>
         </div>
         {goals.length > 0 && (
           <button
             onClick={() => openAdd()}
-            className="bg-[#059669] hover:bg-[#0F6E56] text-white px-4 sm:px-5 py-2 rounded-full text-sm font-medium shrink-0 transition"
+            className="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg text-sm font-medium shrink-0 transition shadow-sm"
           >
             + Add goal
           </button>
@@ -110,11 +108,11 @@ export default function GoalsPage() {
       </div>
 
       {loading ? (
-        <div className="text-[#88b098] text-sm">Loading…</div>
+        <div className="text-fg-muted text-xs">Loading…</div>
       ) : goals.length === 0 ? (
         <EmptyState onPick={(t) => openAdd(t)} />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {goals.map((g) => (
             <GoalCard key={g.id} goal={g} onDelete={() => deleteGoal(g.id)} />
           ))}
@@ -137,26 +135,24 @@ export default function GoalsPage() {
 
 function EmptyState({ onPick }: { onPick: (title: string) => void }) {
   return (
-    <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6 sm:p-10">
-      <div className="text-center mb-8">
-        <div className="text-5xl mb-4">🎯</div>
-        <h2
-          className="text-2xl text-[#e4f0e8] mb-2"
-        >
+    <div className="bg-surface border border-line rounded-xl p-5 sm:p-8 shadow-sm">
+      <div className="text-center mb-6">
+        <div className="text-4xl mb-3">🎯</div>
+        <h2 className="text-lg font-semibold text-fg mb-1">
           What are you saving for?
         </h2>
-        <p className="text-[#88b098] text-sm">Pick one to start, or add your own.</p>
+        <p className="text-fg-muted text-xs">Pick one to start, or add your own.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {PRESET_GOALS.map((p) => (
           <button
             key={p.title}
             onClick={() => onPick(p.title)}
-            className="bg-[#0c2418] hover:bg-[#102e1e] border border-[#1a4a2e] hover:border-[#34d399] rounded-xl p-4 text-center transition"
+            className="bg-canvas hover:bg-accent-soft border border-line hover:border-accent rounded-xl p-3 text-center transition"
           >
-            <div className="text-2xl mb-2">{p.icon}</div>
-            <div className="text-sm text-[#e4f0e8]">{p.title}</div>
+            <div className="text-2xl mb-1.5">{p.icon}</div>
+            <div className="text-xs font-medium text-fg">{p.title}</div>
           </button>
         ))}
       </div>
@@ -171,26 +167,26 @@ function GoalCard({ goal, onDelete }: { goal: Goal; onDelete: () => void }) {
   )}`
 
   return (
-    <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4 mb-3">
+    <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
-          <h3 className="text-lg text-[#e4f0e8] font-medium truncate">{goal.title}</h3>
-          <p className="text-sm text-[#88b098] mt-1">
+          <h3 className="text-sm text-fg font-semibold truncate">{goal.title}</h3>
+          <p className="text-xs text-fg-muted mt-0.5">
             ₹{goal.target_amount.toLocaleString('en-IN')} by {goal.target_year}{' '}
-            <span className="text-[#4a7a5a]">
+            <span className="text-fg-subtle">
               ({yearsLeft} year{yearsLeft === 1 ? '' : 's'} away)
             </span>
           </p>
         </div>
         <button
           onClick={onDelete}
-          className="text-[#88b098] hover:text-[#ef4444] text-xs shrink-0 transition"
+          className="text-fg-muted hover:text-danger text-[11px] font-medium shrink-0 transition"
         >
           Remove
         </button>
       </div>
 
-      <Link href={askHref} className="text-sm text-[#34d399] hover:underline">
+      <Link href={askHref} className="text-xs font-medium text-accent hover:underline">
         Ask Clarzo about this goal →
       </Link>
     </div>
@@ -213,22 +209,18 @@ function AddGoalModal({
   error: string | null
 }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6 max-w-md w-full">
-        <h2
-          className="text-xl text-[#e4f0e8] mb-4"
-        >
-          New goal
-        </h2>
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-surface border border-line rounded-2xl p-5 max-w-md w-full shadow-xl">
+        <h2 className="text-lg font-semibold text-fg mb-4">New goal</h2>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Field label="What's the goal?">
             <input
               type="text"
               placeholder="e.g., Buy a house"
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              className="w-full bg-[#040f0a] border border-[#1a4a2e] focus:border-[#34d399] rounded-lg px-4 py-2 text-[#e4f0e8] placeholder-[#4a7a5a] outline-none transition"
+              className="w-full bg-surface border border-line-strong focus:border-accent rounded-lg px-3 py-2 text-sm text-fg placeholder-fg-subtle outline-none transition"
             />
           </Field>
 
@@ -238,7 +230,7 @@ function AddGoalModal({
               placeholder="e.g., 5000000"
               value={draft.target_amount}
               onChange={(e) => setDraft({ ...draft, target_amount: e.target.value })}
-              className="w-full bg-[#040f0a] border border-[#1a4a2e] focus:border-[#34d399] rounded-lg px-4 py-2 text-[#e4f0e8] placeholder-[#4a7a5a] outline-none transition"
+              className="w-full bg-surface border border-line-strong focus:border-accent rounded-lg px-3 py-2 text-sm text-fg placeholder-fg-subtle outline-none transition"
             />
           </Field>
 
@@ -248,25 +240,25 @@ function AddGoalModal({
               placeholder="e.g., 2030"
               value={draft.target_year}
               onChange={(e) => setDraft({ ...draft, target_year: e.target.value })}
-              className="w-full bg-[#040f0a] border border-[#1a4a2e] focus:border-[#34d399] rounded-lg px-4 py-2 text-[#e4f0e8] placeholder-[#4a7a5a] outline-none transition"
+              className="w-full bg-surface border border-line-strong focus:border-accent rounded-lg px-3 py-2 text-sm text-fg placeholder-fg-subtle outline-none transition"
             />
           </Field>
         </div>
 
-        {error && <p className="text-sm text-[#f5c842] mt-3">Could not save: {error}</p>}
+        {error && <p className="text-xs text-danger mt-3">Could not save: {error}</p>}
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-2 mt-5">
           <button
             onClick={onSave}
             disabled={saving}
-            className="flex-1 bg-[#059669] hover:bg-[#0F6E56] disabled:opacity-50 text-white py-3 rounded-full font-medium transition"
+            className="flex-1 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
           >
             {saving ? 'Saving…' : 'Save goal'}
           </button>
           <button
             onClick={onCancel}
             disabled={saving}
-            className="px-6 border border-[#1a4a2e] hover:bg-[#0c2418] rounded-full text-[#88b098] disabled:opacity-50 transition"
+            className="px-5 border border-line-strong hover:bg-canvas rounded-lg text-sm text-fg-muted disabled:opacity-50 transition"
           >
             Cancel
           </button>
@@ -279,7 +271,7 @@ function AddGoalModal({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm text-[#88b098] mb-2">{label}</label>
+      <label className="block text-xs font-medium text-fg mb-1.5">{label}</label>
       {children}
     </div>
   )

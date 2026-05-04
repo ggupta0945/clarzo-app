@@ -55,7 +55,7 @@ export default function UpgradePage() {
         name: 'Clarzo',
         description: 'Clarzo Pro — ₹99/mo',
         prefill: { name: user?.name, email: user?.email },
-        theme: { color: '#059669' },
+        theme: { color: 'var(--accent)' },
         handler: () => {
           // Razorpay confirms payment client-side, but we still rely on the
           // webhook for the source-of-truth status flip. Just show
@@ -84,86 +84,80 @@ export default function UpgradePage() {
   const buttonDisabled = state === 'creating' || state === 'opened'
 
   return (
-    <div className="px-4 py-6 sm:p-10 max-w-3xl mx-auto">
+    <div className="px-4 py-4 sm:p-8 max-w-3xl mx-auto">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
-      <h1
-        className="text-3xl text-[#e4f0e8] mb-3"
-      >
+      <h1 className="text-xl font-semibold text-fg mb-1">
         Upgrade to Clarzo Pro
       </h1>
-      <p className="text-[#88b098] mb-8 text-sm">
+      <p className="text-fg-muted mb-5 text-xs">
         Unlimited insights, deeper analysis, family portfolios.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6">
-          <div className="mb-4">
-            <p className="text-sm text-[#88b098]">Free</p>
-            <p
-              className="text-3xl text-[#e4f0e8]"
-            >
-              ₹0
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Free plan */}
+        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm">
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">Free</p>
+            <p className="text-2xl font-bold tracking-tight text-fg">₹0</p>
           </div>
-          <ul className="text-sm text-[#88b098] space-y-2 mb-6">
-            <li>✓ Portfolio tracking</li>
-            <li>✓ Sector + market-cap breakdown</li>
-            <li>✓ 10 ClarzoGPT questions / month</li>
-            <li>✓ 3 goals</li>
+          <ul className="text-xs text-fg space-y-1.5 mb-5">
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Portfolio tracking</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Sector + market-cap breakdown</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> 10 ClarzoGPT questions / month</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> 3 goals</li>
           </ul>
           <button
             disabled
-            className="w-full bg-[#0c2418] text-[#4a7a5a] py-3 rounded-full text-sm cursor-default"
+            className="w-full bg-canvas text-fg-subtle py-2 rounded-lg text-xs font-medium cursor-default"
           >
             Current plan
           </button>
         </div>
 
-        <div className="bg-[#071a10] border border-[#34d399] rounded-2xl p-6 relative">
-          <span className="absolute -top-3 right-4 bg-[#34d399] text-[#040f0a] px-3 py-1 rounded-full text-xs font-medium">
+        {/* Pro plan */}
+        <div className="bg-surface border-2 border-accent rounded-xl p-5 relative shadow-sm">
+          <span className="absolute -top-2.5 right-4 bg-accent text-white px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider">
             Recommended
           </span>
-          <div className="mb-4">
-            <p className="text-sm text-[#88b098]">Pro</p>
-            <p
-              className="text-3xl text-[#e4f0e8]"
-            >
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">Pro</p>
+            <p className="text-2xl font-bold tracking-tight text-fg">
               ₹99
-              <span className="text-base text-[#88b098]"> / mo</span>
+              <span className="text-sm font-medium text-fg-muted"> / mo</span>
             </p>
           </div>
-          <ul className="text-sm text-[#e4f0e8] space-y-2 mb-6">
-            <li className="text-[#34d399]">✓ Everything in Free</li>
-            <li>✓ <strong>Unlimited</strong> ClarzoGPT</li>
-            <li>✓ Unlimited goals + tracking</li>
-            <li>✓ Rebalancing recommendations</li>
-            <li>✓ Family portfolio view</li>
-            <li>✓ Tax harvesting alerts</li>
-            <li>✓ Priority support</li>
+          <ul className="text-xs text-fg space-y-1.5 mb-5">
+            <li className="flex gap-1.5 text-accent font-medium"><span>✓</span> Everything in Free</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> <span><strong>Unlimited</strong> ClarzoGPT</span></li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Unlimited goals + tracking</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Rebalancing recommendations</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Family portfolio view</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Tax harvesting alerts</li>
+            <li className="flex gap-1.5"><span className="text-success">✓</span> Priority support</li>
           </ul>
           {state === 'success' ? (
-            <div className="bg-[#0c2418] border border-[#34d399]/30 rounded-xl px-4 py-3 text-sm text-[#34d399] text-center">
+            <div className="bg-success-soft border border-success/30 rounded-lg px-3 py-2 text-xs text-success text-center font-medium">
               Payment received! Your Pro features will activate in a few seconds.
             </div>
           ) : (
             <button
               onClick={startCheckout}
               disabled={buttonDisabled}
-              className="w-full bg-[#059669] hover:bg-[#0F6E56] disabled:opacity-60 disabled:cursor-wait text-white py-3 rounded-full font-medium text-sm transition"
+              className="w-full bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:cursor-wait text-white py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
             >
               {buttonLabel}
             </button>
           )}
           {errorMsg && (
-            <p className="mt-3 text-xs text-[#f5c842] text-center">
+            <p className="mt-2 text-[11px] text-danger text-center">
               Could not start checkout: {errorMsg}
             </p>
           )}
         </div>
       </div>
 
-      <p className="text-center text-xs text-[#4a7a5a] mt-6">
+      <p className="text-center text-[11px] text-fg-muted mt-5">
         Cancel anytime. No questions asked.
       </p>
     </div>

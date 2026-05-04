@@ -83,12 +83,23 @@ export async function POST(req: NextRequest) {
   }
 
   const matched = toInsert.filter((h) => h.isin).length
-  return NextResponse.json({
+  const json = NextResponse.json({
     success: true,
     inserted: toInsert.length,
     matched,
     unmatched: toInsert.length - matched,
   })
+
+  // The middleware uses this cookie to skip the holdings-existence check on
+  // subsequent requests. Sticky for 30 days; cleared if the user wipes their
+  // portfolio (we don't expose that flow yet).
+  json.cookies.set('clz_has_holdings', '1', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+  })
+  return json
 }
 
 async function fileToCsvText(file: File): Promise<string> {

@@ -4,12 +4,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import type { Allocation, AllocationSlice } from '@/lib/allocation'
 
 const COLORS = [
-  '#34d399',
-  '#6ee7b7',
-  '#059669',
-  '#0F6E56',
+  'var(--accent)',
+  '#6172f3',
+  '#8098f9',
+  '#a4bcfd',
+  'var(--success)',
   '#f5c842',
-  '#f59e0b',
   '#fb923c',
   '#60a5fa',
   '#a78bfa',
@@ -42,10 +42,10 @@ export function SectorDonut({ allocation, title = 'Sector breakdown' }: Props) {
       : top
 
   return (
-    <div className="bg-[#071a10] border border-[#1a4a2e] rounded-2xl p-6">
-      <h3 className="text-sm uppercase tracking-wider text-[#88b098] mb-4">{title}</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-        <div className="h-64">
+    <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
+      <h3 className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">{title}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+        <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -54,8 +54,8 @@ export function SectorDonut({ allocation, title = 'Sector breakdown' }: Props) {
                 nameKey="label"
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={95}
+                innerRadius={42}
+                outerRadius={72}
                 paddingAngle={2}
                 stroke="none"
               >
@@ -65,10 +65,11 @@ export function SectorDonut({ allocation, title = 'Sector breakdown' }: Props) {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: '#0c2418',
-                  border: '1px solid #1a4a2e',
-                  borderRadius: 8,
-                  color: '#e4f0e8',
+                  background: '#ffffff',
+                  border: '1px solid #c7d7fe',
+                  borderRadius: 12,
+                  color: 'var(--fg)',
+                  boxShadow: '0 4px 12px rgba(31, 35, 91, 0.08)',
                 }}
                 formatter={(value, name, item) => {
                   const pct = (item as { payload?: { pct?: number } })?.payload?.pct ?? 0
@@ -82,19 +83,19 @@ export function SectorDonut({ allocation, title = 'Sector breakdown' }: Props) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {chartData.map((s, i) => (
-            <div key={s.label} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 min-w-0">
+            <div key={s.label} className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <span
-                  className="w-3 h-3 rounded-sm shrink-0"
+                  className="w-2.5 h-2.5 rounded-sm shrink-0"
                   style={{ background: COLORS[i % COLORS.length] }}
                 />
-                <span className="text-[#e4f0e8] truncate">{s.label}</span>
+                <span className="text-fg truncate">{s.label}</span>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="text-[#4a7a5a] text-xs">{s.count}</span>
-                <span className="font-mono text-[#88b098] text-xs w-12 text-right">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-fg-subtle text-[11px]">{s.count}</span>
+                <span className="text-fg-muted text-[11px] w-10 text-right font-medium">
                   {s.pct.toFixed(1)}%
                 </span>
               </div>
