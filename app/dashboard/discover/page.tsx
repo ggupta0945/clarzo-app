@@ -38,7 +38,7 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="px-4 py-4 sm:p-6 lg:p-8 pb-28 max-w-7xl mx-auto">
+    <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8 pb-28">
       {/* Page header */}
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-fg">

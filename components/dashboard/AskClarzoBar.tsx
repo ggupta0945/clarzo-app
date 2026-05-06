@@ -47,7 +47,7 @@ export function AskClarzoBar() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 lg:left-[calc(14rem+1rem)] lg:right-6 z-30 pointer-events-none">
+    <div className="fixed bottom-4 left-4 right-4 z-30 pointer-events-none">
       <div className="pointer-events-auto max-w-3xl mx-auto space-y-2">
         {/* Conversation panel — only when there's something to show */}
         {hasMessages && (
