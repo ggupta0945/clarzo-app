@@ -216,20 +216,74 @@ function StatCard({
   value,
   sub,
   highlight,
+  icon,
 }: {
   label: string
   value: string
   sub?: string
   highlight?: 'green' | 'red'
+  icon?: 'wallet' | 'invested' | 'pnl'
 }) {
   const color = highlight === 'green' ? 'var(--success)' : highlight === 'red' ? 'var(--danger)' : 'var(--fg)'
+  const accentBg =
+    highlight === 'green' ? 'var(--success-soft)' :
+    highlight === 'red' ? 'var(--danger-soft)' :
+    'var(--accent-soft)'
+  const accentFg =
+    highlight === 'green' ? 'var(--success)' :
+    highlight === 'red' ? 'var(--danger)' :
+    'var(--accent)'
   return (
-    <div className="bg-surface border border-line rounded-xl p-3.5 flex flex-col gap-0.5 shadow-sm">
-      <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">{label}</p>
-      <p className="text-lg sm:text-xl font-bold tracking-tight" style={{ color }}>{value}</p>
-      {sub && <p className="text-[11px] text-fg-muted">{sub}</p>}
+    <div className="bg-surface border border-line rounded-xl p-4 shadow-sm flex items-start gap-3">
+      <div
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: accentBg, color: accentFg }}
+      >
+        <StatIcon name={icon ?? 'wallet'} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-fg-muted">{label}</p>
+        <p className="text-2xl font-semibold tracking-tight mt-0.5" style={{ color }}>{value}</p>
+        {sub && <p className="text-xs text-fg-muted mt-0.5">{sub}</p>}
+      </div>
     </div>
   )
+}
+
+function StatIcon({ name }: { name: 'wallet' | 'invested' | 'pnl' }) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
+  switch (name) {
+    case 'wallet':
+      return (
+        <svg {...common}>
+          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H5a2 2 0 0 1 0-4h13" />
+          <path d="M16 13h2" />
+        </svg>
+      )
+    case 'invested':
+      return (
+        <svg {...common}>
+          <rect x="3" y="6" width="18" height="13" rx="2" />
+          <path d="M3 11h18M8 15h2" />
+        </svg>
+      )
+    case 'pnl':
+      return (
+        <svg {...common}>
+          <path d="M3 17l6-6 4 4 8-8" />
+          <path d="M14 7h7v7" />
+        </svg>
+      )
+  }
 }
 
 function SectorBadge({ sector }: { sector: string }) {
@@ -269,7 +323,7 @@ function StockDetail({
       <td colSpan={8} className="px-4 pb-3.5 pt-2">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">
+            <p className="text-sm font-semibold text-fg mb-3">
               Price journey
             </p>
             <div className="space-y-2">
@@ -305,7 +359,7 @@ function StockDetail({
           </div>
 
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">
+            <p className="text-sm font-semibold text-fg mb-3">
               Position details
             </p>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -330,7 +384,7 @@ function StockDetail({
 
           <div className="flex flex-col justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">
+              <p className="text-sm font-semibold text-fg mb-3">
                 Portfolio share
               </p>
               <div className="flex items-end gap-2">
@@ -666,45 +720,128 @@ export function StocksView({ holdings, summary, profileName }: Props) {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] md:h-screen">
       <div className="flex-1 overflow-y-auto min-w-0">
-        <div className="px-4 py-4 sm:p-6 max-w-7xl mx-auto">
-          <div className="mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8">
+          {/* Welcome row */}
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              {profileName && (
-                <p className="text-[10px] text-fg-muted uppercase tracking-wider font-medium mb-0.5">
-                  {profileName}
-                </p>
-              )}
-              <h1 className="text-xl font-semibold text-fg">Stock portfolio</h1>
-              <p className="text-fg-muted text-xs mt-0.5">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+                Welcome back,{' '}
+                <span className="text-accent">{profileName?.split(' ')[0] ?? 'there'}!</span>
+              </h1>
+              <p className="text-fg-muted text-xs mt-1">
                 {localHoldings.length} holdings · live prices via Yahoo Finance
               </p>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <Link
                 href="/dashboard/upload"
-                className="text-xs px-3 py-1.5 rounded-full bg-surface border border-line-strong text-accent hover:bg-accent-soft transition font-medium"
+                className="text-xs px-3 py-1.5 rounded-full bg-surface border border-line-strong text-accent hover:bg-accent-soft transition font-medium shadow-sm"
               >
-                Re-upload
+                + Re-upload
               </Link>
             </div>
           </div>
 
-          {/* stat cards */}
-          <div className="grid gap-3 mb-5 grid-cols-1 sm:grid-cols-3">
-            <StatCard label="Current Value" value={`₹${fmt(CURRENT)}`} />
-            <StatCard label="Total Invested" value={`₹${fmt(INVESTED)}`} />
-            <StatCard
-              label="Unrealised P&L"
-              value={`${UNREALISED >= 0 ? '+' : '−'}₹${fmt(Math.abs(UNREALISED))}`}
-              sub={`${UNREALISED_PCT >= 0 ? '+' : ''}${UNREALISED_PCT.toFixed(2)}% on cost`}
-              highlight={UNREALISED >= 0 ? 'green' : 'red'}
-            />
+          {/* Featured account card + stat cards in one grid */}
+          <div className="grid gap-3 mb-5 grid-cols-1 lg:grid-cols-[1.4fr_2fr]">
+            {/* Gradient credit-card style featured card */}
+            <div className="relative overflow-hidden rounded-2xl p-5 shadow-lg">
+              {/* Layered gradient bg */}
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 45%, #1f235b 100%)',
+                }}
+              />
+              {/* Decorative blobs */}
+              <div
+                aria-hidden
+                className="absolute -top-12 -right-12 w-44 h-44 rounded-full blur-3xl"
+                style={{ background: 'rgba(255, 255, 255, 0.18)' }}
+              />
+              <div
+                aria-hidden
+                className="absolute -bottom-16 -left-10 w-48 h-48 rounded-full blur-3xl"
+                style={{ background: 'rgba(167, 139, 250, 0.30)' }}
+              />
+              {/* Stack hint — peek of two cards behind */}
+              <div
+                aria-hidden
+                className="absolute -top-2 inset-x-6 h-3 rounded-t-xl bg-white/15"
+              />
+              <div
+                aria-hidden
+                className="absolute -top-1 inset-x-3 h-2 rounded-t-xl bg-white/25"
+              />
+
+              {/* Content */}
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <p className="text-white/70 text-[10px] uppercase tracking-widest font-medium">Stock Portfolio</p>
+                    <p className="text-white text-base font-semibold mt-1">
+                      Standard Account
+                    </p>
+                    <p className="text-white/60 text-[11px] mt-0.5">
+                      {localHoldings.length} holdings · INR
+                    </p>
+                  </div>
+                  <button
+                    aria-label="More"
+                    className="text-white/70 hover:text-white transition"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="19" cy="12" r="1.5" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex items-end justify-between gap-4 mt-auto">
+                  <div>
+                    <p className="text-white/70 text-[10px] uppercase tracking-widest font-medium">Total Balance</p>
+                    <p className="text-white text-3xl font-bold tracking-tight mt-1">
+                      ₹{fmt(CURRENT)}
+                    </p>
+                  </div>
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={{
+                      background: UNREALISED >= 0 ? 'rgba(52, 211, 153, 0.25)' : 'rgba(248, 113, 113, 0.25)',
+                      color: UNREALISED >= 0 ? '#86efac' : '#fca5a5',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      {UNREALISED >= 0 ? <polyline points="6 14 12 8 18 14" /> : <polyline points="6 10 12 16 18 10" />}
+                    </svg>
+                    {UNREALISED >= 0 ? '+' : ''}
+                    {UNREALISED_PCT.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stat cards */}
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+              <StatCard label="Current Value" value={`₹${fmt(CURRENT)}`} icon="wallet" />
+              <StatCard label="Total Invested" value={`₹${fmt(INVESTED)}`} icon="invested" />
+              <StatCard
+                label="Unrealised P&L"
+                value={`${UNREALISED >= 0 ? '+' : '−'}₹${fmt(Math.abs(UNREALISED))}`}
+                sub={`${UNREALISED_PCT >= 0 ? '+' : ''}${UNREALISED_PCT.toFixed(2)}% on cost`}
+                highlight={UNREALISED >= 0 ? 'green' : 'red'}
+                icon="pnl"
+              />
+            </div>
           </div>
 
           {/* sector donut + top movers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
             <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
-              <h2 className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-2">
+              <h2 className="text-sm font-semibold text-fg mb-3">
                 Sector allocation
               </h2>
               <ResponsiveContainer width="100%" height={190}>
@@ -753,7 +890,7 @@ export function StocksView({ holdings, summary, profileName }: Props) {
             </div>
 
             <div className="bg-surface border border-line rounded-xl p-4 shadow-sm">
-              <h2 className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-3">
+              <h2 className="text-sm font-semibold text-fg mb-4">
                 Top movers
               </h2>
               <div className="grid grid-cols-2 gap-4">
@@ -772,13 +909,13 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                   },
                 ].map((col) => (
                   <div key={col.label}>
-                    <p className="text-[11px] mb-2 font-semibold" style={{ color: col.color }}>
+                    <p className="text-xs mb-2.5 font-semibold" style={{ color: col.color }}>
                       {col.label}
                     </p>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {col.items.map((h) => (
                         <div key={h.name}>
-                          <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center justify-between mb-1">
                             <button
                               onClick={() => {
                                 setExpandedStock(h.name)
@@ -786,12 +923,12 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                                   .querySelector(`[data-row="${CSS.escape(h.name)}"]`)
                                   ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                               }}
-                              className="text-[11px] text-fg font-medium truncate max-w-[110px] hover:text-accent transition text-left"
+                              className="text-xs text-fg font-medium truncate max-w-[110px] hover:text-accent transition text-left"
                             >
                               {h.short}
                             </button>
                             <span
-                              className="text-[11px] font-semibold shrink-0"
+                              className="text-xs font-semibold shrink-0"
                               style={{ color: col.color }}
                             >
                               {h.pct >= 0 ? '+' : ''}
@@ -854,28 +991,28 @@ export function StocksView({ holdings, summary, profileName }: Props) {
               <table className="w-full">
                 <thead className="bg-canvas">
                   <tr>
-                    <th className="text-left text-[10px] uppercase tracking-wider text-fg-muted px-4 py-2 font-medium">
+                    <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-4 py-3 font-medium">
                       Stock
                     </th>
-                    <th className="text-left text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium hidden md:table-cell">
+                    <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden md:table-cell">
                       1D
                     </th>
-                    <th className="text-left text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium hidden sm:table-cell">
+                    <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden sm:table-cell">
                       Sector
                     </th>
-                    <th className="text-right text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium">
+                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium">
                       Qty
                     </th>
-                    <th className="text-right text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium hidden md:table-cell">
+                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden md:table-cell">
                       Avg / CMP
                     </th>
-                    <th className="text-right text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium">
+                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium">
                       Value
                     </th>
-                    <th className="text-right text-[10px] uppercase tracking-wider text-fg-muted px-3 py-2 font-medium hidden sm:table-cell">
+                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden sm:table-cell">
                       P&L
                     </th>
-                    <th className="text-right text-[10px] uppercase tracking-wider text-fg-muted px-4 py-2 font-medium">
+                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-4 py-3 font-medium">
                       Return
                     </th>
                   </tr>
@@ -895,7 +1032,7 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                             expanded ? 'bg-canvas' : 'hover:bg-canvas'
                           }`}
                         >
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <svg
                                 className={`w-3 h-3 text-fg-subtle shrink-0 transition-transform ${
@@ -909,29 +1046,29 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                                 <polyline points="9 18 15 12 9 6" />
                               </svg>
                               <div>
-                                <p className="text-xs text-fg font-medium">{h.short}</p>
+                                <p className="text-[13px] text-fg font-medium">{h.short}</p>
                                 <p className="text-[11px] text-fg-muted mt-0.5 hidden sm:block">
                                   {h.name}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-3 py-2.5 hidden md:table-cell">
+                          <td className="px-3 py-3 hidden md:table-cell">
                             <StockSparkline name={h.name} width={64} height={22} />
                           </td>
-                          <td className="px-3 py-2.5 hidden sm:table-cell">
+                          <td className="px-3 py-3 hidden sm:table-cell">
                             <SectorBadge sector={h.sector} />
                           </td>
-                          <td className="px-3 py-2.5 text-right text-xs text-fg-muted">
+                          <td className="px-3 py-3 text-right text-[13px] text-fg-muted">
                             {h.qty}
                           </td>
-                          <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                          <td className="px-3 py-3 text-right hidden md:table-cell">
                             <p className="text-[11px] text-fg-muted">₹{fmt(h.avg, 2)}</p>
                             <p className="text-[11px] text-fg font-medium">
                               ₹{fmt(h.price, 2)}
                             </p>
                           </td>
-                          <td className="px-3 py-2.5 text-right text-xs text-fg font-medium">
+                          <td className="px-3 py-3 text-right text-[13px] text-fg font-medium">
                             ₹{fmt(h.value)}
                           </td>
                           <td
@@ -940,24 +1077,19 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                           >
                             {h.pnl >= 0 ? '+' : '−'}₹{fmt(Math.abs(h.pnl))}
                           </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <div className="w-10 h-1 bg-line rounded-full overflow-hidden hidden sm:block">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${Math.min(
-                                      (Math.abs(h.pct) / Math.max(maxGainerPct, 1)) * 100,
-                                      100,
-                                    )}%`,
-                                    background: pnlColor,
-                                  }}
-                                />
-                              </div>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end">
                               <span
-                                className="text-xs font-semibold text-right w-14 shrink-0"
-                                style={{ color: pnlColor }}
+                                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+                                style={{
+                                  background: h.pnl >= 0 ? 'var(--success-soft)' : 'var(--danger-soft)',
+                                  color: pnlColor,
+                                }}
                               >
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ background: pnlColor }}
+                                />
                                 {h.pct >= 0 ? '+' : ''}
                                 {h.pct.toFixed(1)}%
                               </span>

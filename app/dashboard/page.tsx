@@ -16,8 +16,11 @@ import { AssetClassBreakdown } from '@/components/dashboard/AssetClassBreakdown'
 import { RiskHorizonCard } from '@/components/dashboard/RiskHorizonCard'
 import { RebalanceCard } from '@/components/dashboard/RebalanceCard'
 import { AskClarzoBar } from '@/components/dashboard/AskClarzoBar'
+import { PortfolioHero } from '@/components/dashboard/PortfolioHero'
+import { NiftyChart } from '@/components/dashboard/NiftyChart'
 import { TrackEvent } from '@/components/analytics/TrackEvent'
-import { EmailSampleButton } from '@/components/dashboard/EmailSampleButton'
+import { aggregateBySector } from '@/lib/allocation'
+import { fetchNifty } from '@/lib/nifty-data'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -68,6 +71,11 @@ export default async function DashboardPage() {
   const assetMix = aggregateAssetClasses(holdings)
   const riskHorizon = assessRiskAndHorizon(holdings, goals)
   const rebalancePlan = generateRebalanceSuggestions(holdings, riskHorizon)
+  const sectorAlloc = aggregateBySector(holdings)
+  const topSectors = sectorAlloc.slices
+    .filter((s) => s.label !== 'Unclassified')
+    .slice(0, 3)
+    .map((s) => ({ label: s.label, pct: s.pct }))
 
   // Pull recent corporate actions for the user's largest stock holdings.
   const topStockSymbols = [...holdings]
@@ -77,10 +85,13 @@ export default async function DashboardPage() {
     .map((h) => h.scheme_name)
   const recentActions = topStockSymbols.length > 0 ? await fetchRecentCorpActions(topStockSymbols) : []
 
+  // Nifty 50 — default 6-month series; client can re-fetch shorter ranges.
+  const nifty = await fetchNifty('6mo')
+
   const firstName = profile?.name?.split(' ')[0] || 'there'
 
   return (
-    <div className="px-4 py-4 sm:p-6 lg:p-8 pb-28 max-w-7xl mx-auto">
+    <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8 pb-28">
       <TrackEvent
         event="dashboard_viewed"
         properties={{
@@ -90,93 +101,30 @@ export default async function DashboardPage() {
         }}
       />
 
-      {/* Top bar: greeting + actions */}
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#a4bcfd] to-[#444ce7] flex items-center justify-center text-white text-sm font-semibold">
-            {firstName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold text-fg">Hi {firstName}</h1>
-              <span className="text-[9px] uppercase tracking-wider font-semibold text-accent bg-accent-soft border border-line-strong rounded px-1.5 py-px">
-                PRO
-              </span>
-            </div>
-            <p className="text-xs text-fg-muted">Here&apos;s where your money stands today.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <EmailSampleButton />
-          <Link
-            href="/dashboard/upload"
-            className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-sm"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Upload
-          </Link>
-        </div>
-      </div>
+      {/* Portfolio hero — title, segment pills, invested/returns, total arc.
+          Re-upload + ticker chips live inside the hero header now. */}
+      <PortfolioHero
+        firstName={firstName}
+        summary={summary}
+        assetSlices={assetMix.slices}
+        topSectors={topSectors}
+      />
 
-      {/* Summary cards */}
-      <div className="bg-surface border border-line rounded-xl p-4 mb-5 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:border-r sm:border-line sm:pr-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-accent-soft text-accent">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="6" width="18" height="13" rx="2" />
-                  <path d="M16 12h2" />
-                </svg>
-              </span>
-              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">Current</p>
-            </div>
-            <p className="text-xl font-bold tracking-tight text-fg">
-              ₹{summary.netWorth.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-          <div className="sm:border-r sm:border-line sm:pr-4">
-            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-1">Invested</p>
-            <p className="text-xl font-bold tracking-tight text-fg">
-              ₹{summary.invested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-1">Total Returns</p>
-            <p
-              className="text-xl font-bold tracking-tight"
-              style={{ color: summary.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }}
-            >
-              {summary.pnlPct >= 0 ? '+' : ''}{summary.pnlPct.toFixed(1)}%
-            </p>
-            <p
-              className="text-xs mt-0.5 font-medium"
-              style={{ color: summary.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }}
-            >
-              {summary.pnl >= 0 ? '+' : ''}₹{Math.abs(summary.pnl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Health + Risk-Horizon row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+      {/* Nifty graph (left half) + Portfolio Health (right half) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3 items-stretch">
+        <NiftyChart initialData={nifty} />
         <PortfolioHealthCard health={health} />
-        <RiskHorizonCard assessment={riskHorizon} />
       </div>
 
-      {/* Goals + Asset Class row */}
+      {/* Risk + Asset Class row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-        <GoalProgress goals={goals} currentValue={summary.netWorth} />
+        <RiskHorizonCard assessment={riskHorizon} />
         <AssetClassBreakdown slices={assetMix.slices} total={assetMix.total} />
       </div>
 
-      {/* Rebalance suggestions */}
-      <div className="mb-5">
+      {/* Goals + Rebalance row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+        <GoalProgress goals={goals} currentValue={summary.netWorth} />
         <RebalanceCard plan={rebalancePlan} />
       </div>
 

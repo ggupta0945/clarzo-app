@@ -21,10 +21,10 @@ export default async function DashboardLayout({
     .single()
 
   return (
-    <div className="min-h-screen bg-canvas text-fg lg:flex">
+    <div className="min-h-screen bg-canvas text-fg flex flex-col">
       <AnalyticsIdentity user={{ id: user.id, email: user.email, name: profile?.name ?? null }} />
       <DashboardNav profile={{ name: profile?.name ?? null, email: user.email ?? null }} />
-      <main className="flex-1 lg:overflow-y-auto">{children}</main>
+      <main className="flex-1">{children}</main>
       <FloatingAskClarzo />
     </div>
   )
