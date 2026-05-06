@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/dashboard/actions'
 import { ThemeToggle } from './ThemeToggle'
+import { NotificationBell } from './NotificationBell'
 
 type Profile = { name: string | null; email: string | null }
 
-type IconName = 'home' | 'briefcase' | 'sparkle' | 'goal' | 'compass' | 'crown' | 'tools'
+type IconName = 'home' | 'briefcase' | 'sparkle' | 'goal' | 'compass' | 'crown' | 'tools' | 'family'
 
 type NavLink = {
   href: string
@@ -25,6 +26,7 @@ const LINKS: NavLink[] = [
   { href: '/dashboard/ask', label: 'Ask Clarzo', icon: 'sparkle' },
   { href: '/dashboard/goals', label: 'Goals', icon: 'goal' },
   { href: '/dashboard/discover', label: 'Discover', icon: 'compass' },
+  { href: '/dashboard/family', label: 'Family', icon: 'family' },
   { href: '/dashboard/upgrade', label: 'Upgrade', icon: 'crown' },
 ]
 
@@ -101,15 +103,7 @@ export function DashboardNav({ profile }: { profile: Profile }) {
 
             <CompactThemeToggle />
 
-            <button
-              aria-label="Notifications"
-              className="h-9 w-9 rounded-full bg-surface border border-line flex items-center justify-center text-fg-muted hover:text-fg shadow-sm transition"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </button>
+            <NotificationBell />
 
             <div className="relative" ref={menuRef}>
               <button
@@ -337,6 +331,15 @@ function Icon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z" />
+        </svg>
+      )
+    case 'family':
+      return (
+        <svg {...common}>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       )
   }

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
 import { generateInsights } from '@/lib/insights'
+import { syncNotifications } from '@/lib/notifications'
 import { computeHealthScore } from '@/lib/portfolio-health'
 import { getUserGoals } from '@/lib/goals'
 import { fetchRecentCorpActions } from '@/lib/stock-events'
@@ -66,6 +67,10 @@ export default async function DashboardPage() {
   }
 
   const insights = generateInsights(holdings)
+
+  // Fire-and-forget: sync portfolio-derived notifications. Non-blocking.
+  void syncNotifications(user!.id, holdings, insights, supabase)
+
   const health = computeHealthScore(holdings)
   const goals = await getUserGoals(user!.id)
   const assetMix = aggregateAssetClasses(holdings)

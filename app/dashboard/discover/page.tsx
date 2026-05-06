@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { sectors, gptResponses, type Company, type Sector } from './data'
+import { sectors, type Company, type Sector } from './data'
 
 // Three views in one page: sectors grid → companies in a sector → company
 // detail. Lives under the dashboard layout, so the sidebar / Ask Clarzo bar
@@ -45,7 +45,7 @@ export default function DiscoverPage() {
           Discover where to invest
         </h1>
         <p className="text-xs text-fg-muted mt-0.5">
-          Sector-by-sector research with pros, cons, and CompanyGPT.
+          Sector-by-sector research with pros, cons, and ClarzoGPT.
         </p>
       </div>
 
@@ -269,19 +269,28 @@ function CompanyDetail({ company }: { company: Company }) {
   const [chat, setChat] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [showSugs, setShowSugs] = useState(true)
+  const [thinking, setThinking] = useState(false)
 
-  function ask(question: string) {
-    if (!question.trim()) return
-    const reply =
-      gptResponses[question] ??
-      `Based on available filings and public data for ${company.name}:\n\nThis is a great question. In a live version, CompanyGPT would analyze ${company.full}'s quarterly reports, annual filings, investor presentations, and screener data to give you a detailed, sourced answer.\n\n📄 Source: ${company.full} public filings, Screener.in`
-
+  async function ask(question: string) {
+    if (!question.trim() || thinking) return
     setChat((prev) => [...prev, { role: 'user', text: question }])
     setShowSugs(false)
     setDraft('')
-    setTimeout(() => {
+    setThinking(true)
+    try {
+      const res = await fetch('/api/company-ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, company }),
+      })
+      const data = await res.json()
+      const reply = data.text ?? 'Sorry, I could not generate a response. Please try again.'
       setChat((prev) => [...prev, { role: 'ai', text: reply }])
-    }, 600)
+    } catch {
+      setChat((prev) => [...prev, { role: 'ai', text: 'Network error. Please try again.' }])
+    } finally {
+      setThinking(false)
+    }
   }
 
   return (
@@ -378,7 +387,7 @@ function CompanyDetail({ company }: { company: Company }) {
                 🤖
               </div>
               <div>
-                <p className="text-xs font-semibold text-fg">CompanyGPT — {company.name}</p>
+                <p className="text-xs font-semibold text-fg">ClarzoGPT — {company.name}</p>
                 <p className="text-[10px] text-fg-muted">
                   Ask anything about {company.full}. Answers based on quarterly reports, annual
                   filings, and public data.
@@ -400,7 +409,7 @@ function CompanyDetail({ company }: { company: Company }) {
               </div>
             )}
 
-            {chat.length > 0 && (
+            {(chat.length > 0 || thinking) && (
               <div className="mb-3 flex max-h-72 flex-col gap-2 overflow-y-auto pr-1">
                 {chat.map((m, i) => (
                   <div
@@ -413,7 +422,7 @@ function CompanyDetail({ company }: { company: Company }) {
                   >
                     {m.role === 'ai' && (
                       <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-accent">
-                        CompanyGPT · {company.name}
+                        ClarzoGPT · {company.name}
                       </p>
                     )}
                     {m.text.split('\n').map((line, j) => (
@@ -421,6 +430,16 @@ function CompanyDetail({ company }: { company: Company }) {
                     ))}
                   </div>
                 ))}
+                {thinking && (
+                  <div className="self-start max-w-[85%] rounded-xl rounded-bl-sm bg-canvas border border-line px-3 py-2 text-xs text-fg-muted">
+                    <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-accent">ClarzoGPT · {company.name}</p>
+                    <span className="inline-flex gap-1">
+                      <span className="animate-bounce">·</span>
+                      <span className="animate-bounce [animation-delay:0.15s]">·</span>
+                      <span className="animate-bounce [animation-delay:0.3s]">·</span>
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -434,19 +453,21 @@ function CompanyDetail({ company }: { company: Company }) {
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={`Ask about ${company.name}...`}
-                className="flex-1 rounded-lg bg-surface border border-line-strong px-3 py-2 text-xs text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
+                disabled={thinking}
+                placeholder={thinking ? 'Thinking…' : `Ask about ${company.name}...`}
+                className="flex-1 rounded-lg bg-surface border border-line-strong px-3 py-2 text-xs text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none disabled:opacity-60"
               />
               <button
                 type="submit"
-                className="rounded-lg bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-semibold text-white transition shadow-sm"
+                disabled={thinking || !draft.trim()}
+                className="rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 px-3.5 py-2 text-xs font-semibold text-white transition shadow-sm"
               >
                 Ask →
               </button>
             </form>
 
             <p className="mt-2 text-center text-[10px] text-fg-subtle">
-              ⚠️ CompanyGPT provides information based on publicly available data. This is not
+              ⚠️ ClarzoGPT provides information based on publicly available data. This is not
               investment advice. Always verify with official filings.
             </p>
           </div>

@@ -45,16 +45,18 @@ export async function POST(req: NextRequest) {
 
   const { messages } = (await req.json()) as { messages: UIMessage[] }
 
-  const [holdings, goals] = await Promise.all([
+  const [holdings, goals, profileRow] = await Promise.all([
     getUserHoldings(user.id),
     getUserGoals(user.id),
+    supabase.from('profiles').select('risk_profile').eq('id', user.id).single(),
   ])
   const summary = computePortfolioSummary(holdings)
   const sectors = aggregateBySector(holdings)
   const mcaps = aggregateByMcap(holdings)
   const insights = generateInsights(holdings)
+  const riskProfile = (profileRow.data?.risk_profile ?? null) as Parameters<typeof buildSystemPrompt>[0]['riskProfile']
 
-  const system = buildSystemPrompt({ holdings, summary, sectors, mcaps, insights, goals })
+  const system = buildSystemPrompt({ holdings, summary, sectors, mcaps, insights, goals, riskProfile })
 
   // Persist the user's last turn before we stream — even if streaming fails,
   // the question is captured. We stay deliberately silent on errors here:

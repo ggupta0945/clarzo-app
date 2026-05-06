@@ -64,6 +64,14 @@ export async function POST(req: NextRequest) {
   const namesNeedingISIN = parseResult.holdings.filter((h) => !h.isin).map((h) => h.scheme_name)
   const isinMap = await fuzzyMatchISINs(supabase, namesNeedingISIN)
 
+  // Replace semantics: wipe existing stock/MF holdings before inserting so
+  // re-uploading the same file doesn't create duplicates.
+  await supabase
+    .from('holdings')
+    .delete()
+    .eq('user_id', user.id)
+    .in('asset_type', ['stock', 'mutual_fund'])
+
   const toInsert = parseResult.holdings.map((h) => ({
     user_id: user.id,
     isin: h.isin ?? isinMap.get(h.scheme_name) ?? null,
