@@ -32,12 +32,21 @@ export type PortfolioSummary = {
 export async function getUserHoldings(userId: string, client?: SupabaseClient<any, 'public', any>): Promise<EnrichedHolding[]> {
   const supabase = client ?? (await createClient())
 
-  const { data: holdings } = await supabase
+  const { data: holdings, error: holdingsErr } = await supabase
     .from('holdings')
     .select('id, isin, scheme_name, units, avg_cost, asset_type, current_price')
     .eq('user_id', userId)
 
+  if (holdingsErr) {
+    console.error('getUserHoldings error:', holdingsErr.message)
+    return []
+  }
+
   if (!holdings || holdings.length === 0) return []
+
+  // Non-market asset types (FD, gold, real_estate, debt) carry their value
+  // directly in current_price / avg_cost and don't need external price feeds.
+  const manualTypes = new Set(['fd', 'gold', 'real_estate', 'debt'])
 
   // Mutual funds resolve current price via nav_latest. Stocks carry their
   // last-known price on the holding itself (set at upload time from the
@@ -88,7 +97,7 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
   // symbol isn't in our reference table.
   const stockSymbols: string[] = []
   for (const h of holdings) {
-    if (h.asset_type !== 'stock' || !h.isin) continue
+    if (h.asset_type !== 'stock' || !h.isin || manualTypes.has(h.asset_type as string)) continue
     const sym = companyMap.get(h.isin)?.symbol
     if (sym) stockSymbols.push(sym)
   }
@@ -114,6 +123,7 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
     const units = Number(h.units)
     const avg_cost = h.avg_cost != null ? Number(h.avg_cost) : null
     const asset_type = (h.asset_type as string) ?? 'mutual_fund'
+    const isManual = manualTypes.has(asset_type)
 
     const meta = h.isin ? companyMap.get(h.isin) : undefined
     const live_stock_price =
@@ -121,17 +131,23 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
         ? livePriceMap.get(meta.symbol.toUpperCase()) ?? null
         : null
 
-    const current_nav =
-      asset_type === 'stock'
-        ? live_stock_price ??
-          (h.current_price != null ? Number(h.current_price) : null)
-        : h.isin
-          ? navMap.get(h.isin) ?? null
-          : null
+    let current_nav: number | null = null
+    if (isManual) {
+      // FD, gold, real_estate, debt: current_price holds the per-unit value
+      current_nav = h.current_price != null ? Number(h.current_price) : avg_cost
+    } else if (asset_type === 'stock') {
+      current_nav = live_stock_price ?? (h.current_price != null ? Number(h.current_price) : null)
+    } else {
+      current_nav = h.isin ? navMap.get(h.isin) ?? null : null
+    }
 
     const invested = avg_cost != null ? units * avg_cost : 0
-    const current_value = current_nav != null ? units * current_nav : invested
-    const pnl = current_value - invested
+    let current_value = current_nav != null ? units * current_nav : invested
+
+    // Debt is a liability — it reduces net worth
+    if (asset_type === 'debt') current_value = -Math.abs(current_value)
+
+    const pnl = current_value - (asset_type === 'debt' ? -Math.abs(invested) : invested)
     const pnl_pct = invested > 0 ? (pnl / invested) * 100 : 0
 
     const sector =

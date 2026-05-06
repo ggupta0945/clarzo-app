@@ -12,6 +12,7 @@ import type { EnrichedHolding, PortfolioSummary } from '@/lib/portfolio'
 
 // ── view-model — flatten EnrichedHolding into the shape this page renders ──
 type Holding = {
+  id: string
   name: string
   short: string
   sector: string
@@ -409,16 +410,7 @@ function StockDetail({
               onClick={onAskClarzo}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-[11px] font-medium transition w-full justify-center shadow-sm"
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               Ask Clarzo about this stock
@@ -670,25 +662,39 @@ type Props = {
 
 export function StocksView({ holdings, summary, profileName }: Props) {
   // Map server-side EnrichedHolding into the local Holding view-model.
-  const localHoldings: Holding[] = useMemo(
-    () =>
-      holdings.map((h) => {
-        const price = h.current_nav ?? h.avg_cost ?? 0
-        return {
-          name: h.scheme_name,
-          short: getShortName(h.scheme_name),
-          sector: h.sector ?? 'Other',
-          qty: h.units,
-          avg: h.avg_cost ?? 0,
-          invested: h.invested,
-          price,
-          value: h.current_value,
-          pnl: h.pnl,
-          pct: h.pnl_pct,
-        }
-      }),
-    [holdings],
-  )
+  const localHoldings: Holding[] = useMemo(() => {
+    const raw = holdings.map((h) => {
+      const price = h.current_nav ?? h.avg_cost ?? 0
+      return {
+        id: h.id,
+        name: h.scheme_name,
+        short: getShortName(h.scheme_name),
+        sector: h.sector ?? 'Other',
+        qty: h.units,
+        avg: h.avg_cost ?? 0,
+        invested: h.invested,
+        price,
+        value: h.current_value,
+        pnl: h.pnl,
+        pct: h.pnl_pct,
+      }
+    })
+
+    // Merge duplicate holdings by name (stale DB rows from before replace-on-upload).
+    const seen = new Map<string, Holding>()
+    for (const h of raw) {
+      const ex = seen.get(h.name)
+      if (!ex) { seen.set(h.name, { ...h }); continue }
+      ex.qty += h.qty
+      ex.invested += h.invested
+      ex.value += h.value
+      ex.pnl += h.pnl
+      ex.avg = ex.qty > 0 ? ex.invested / ex.qty : h.avg
+      ex.price = h.price
+      ex.pct = ex.invested > 0 ? (ex.pnl / ex.invested) * 100 : 0
+    }
+    return Array.from(seen.values())
+  }, [holdings])
 
   const [sortBy, setSortBy] = useState<'value' | 'pct' | 'pnl'>('value')
   const [showAll, setShowAll] = useState(false)
@@ -913,8 +919,8 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                       {col.label}
                     </p>
                     <div className="space-y-2.5">
-                      {col.items.map((h) => (
-                        <div key={h.name}>
+                      {col.items.map((h, i) => (
+                        <div key={`${col.label}-${i}`}>
                           <div className="flex items-center justify-between mb-1">
                             <button
                               onClick={() => {
@@ -1022,7 +1028,7 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                     const expanded = expandedStock === h.name
                     const pnlColor = h.pnl >= 0 ? 'var(--success)' : 'var(--danger)'
                     return (
-                      <Fragment key={h.name}>
+                      <Fragment key={h.id}>
                         <tr
                           data-row={h.name}
                           onClick={() =>

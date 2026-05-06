@@ -120,6 +120,73 @@ export function generateInsights(holdings: EnrichedHolding[]): Insight[] {
     })
   }
 
+  // 8. Mutual fund overlap: multiple funds with "Large Cap", "Flexi", "Multi"
+  //    in their name targeting the same market-cap segment — likely overlapping holdings.
+  const mfHoldings = holdings.filter((h) => h.asset_type === 'mutual_fund')
+  if (mfHoldings.length >= 2) {
+    const OVERLAP_KEYWORDS: Record<string, string> = {
+      'large cap': 'Large Cap', 'largecap': 'Large Cap',
+      'flexi cap': 'Flexi Cap', 'flexicap': 'Flexi Cap',
+      'multi cap': 'Multi Cap', 'multicap': 'Multi Cap',
+      'mid cap': 'Mid Cap', 'midcap': 'Mid Cap',
+      'small cap': 'Small Cap', 'smallcap': 'Small Cap',
+      'bluechip': 'Large Cap', 'blue chip': 'Large Cap',
+    }
+    const categoryCount: Record<string, string[]> = {}
+    for (const h of mfHoldings) {
+      const lower = h.scheme_name.toLowerCase()
+      for (const [kw, cat] of Object.entries(OVERLAP_KEYWORDS)) {
+        if (lower.includes(kw)) {
+          categoryCount[cat] = categoryCount[cat] ?? []
+          categoryCount[cat].push(h.scheme_name)
+          break
+        }
+      }
+    }
+    for (const [cat, names] of Object.entries(categoryCount)) {
+      if (names.length >= 2) {
+        insights.push({
+          id: `fund-overlap-${cat.replace(/\s/g, '-').toLowerCase()}`,
+          severity: 'warning',
+          title: `Possible overlap: ${names.length} ${cat} funds`,
+          description: `You hold multiple funds in the same category (${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}). They likely own the same top 20 stocks, reducing diversification. Consider consolidating.`,
+          action: { label: 'Ask Clarzo', href: `/dashboard/ask?q=${encodeURIComponent(`I have ${names.length} ${cat} funds. Do they overlap? Should I consolidate?`)}` },
+        })
+      }
+    }
+  }
+
+  // 9. Debt-heavy: outstanding loans > 40% of gross portfolio value
+  const debtHoldings = holdings.filter((h) => h.asset_type === 'debt')
+  if (debtHoldings.length > 0) {
+    const totalDebt = debtHoldings.reduce((s, h) => s + h.units * (h.current_nav ?? 1), 0)
+    const grossAssets = total + totalDebt // total is already net of debt because debt is negative
+    const debtRatio = grossAssets > 0 ? (totalDebt / grossAssets) * 100 : 0
+    if (debtRatio >= 40) {
+      insights.push({
+        id: 'high-debt-ratio',
+        severity: 'warning',
+        title: `Loans are ${debtRatio.toFixed(0)}% of your gross assets`,
+        description: `High leverage means market downturns hit harder — you still owe the EMI regardless of portfolio performance. Consider accelerating loan repayment before increasing equity exposure.`,
+      })
+    }
+  }
+
+  // 10. Gold under-allocation: many financial planners suggest 5–10%
+  const goldValue = holdings
+    .filter((h) => h.asset_type === 'gold')
+    .reduce((s, h) => s + h.current_value, 0)
+  const goldPct = total > 0 ? (goldValue / total) * 100 : 0
+  if (goldPct === 0 && holdings.length >= 5) {
+    insights.push({
+      id: 'no-gold',
+      severity: 'info',
+      title: 'No gold in your portfolio',
+      description: 'Gold acts as a hedge during equity market corrections. Most planners suggest 5–10% allocation. Consider Sovereign Gold Bonds (SGBs) for tax-efficient gold exposure.',
+      action: { label: 'Add gold', href: '/dashboard/upload' },
+    })
+  }
+
   return insights
 }
 
