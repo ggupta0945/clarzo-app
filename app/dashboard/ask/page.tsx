@@ -5,6 +5,7 @@ import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { captureEvent } from '@/lib/analytics/client'
+import { MarkdownMessage } from '@/components/markdown-message'
 
 const SUGGESTED_QUESTIONS = [
   "What's my biggest risk right now?",
@@ -237,13 +238,13 @@ function AskPageInner() {
 
         {history.map((m) => (
           <Bubble key={m.id} role={m.role}>
-            {m.content}
+            {m.role === 'assistant' ? <MarkdownMessage content={m.content} /> : m.content}
           </Bubble>
         ))}
 
         {liveRender.map((m) => (
           <Bubble key={m.id} role={m.role}>
-            {m.content}
+            {m.role === 'assistant' ? <MarkdownMessage content={m.content} /> : m.content}
             {m.role === 'assistant' && isLoading && m.id === liveRender[liveRender.length - 1]?.id && (
               <span className="animate-pulse">▌</span>
             )}
@@ -333,9 +334,13 @@ function Bubble({ role, children }: { role: 'user' | 'assistant'; children: Reac
         {role === 'assistant' && (
           <p className="text-[10px] text-accent mb-1 font-semibold uppercase tracking-wider">Clarzo</p>
         )}
-        {/* Wrapper is a div, not a p — children may include block elements
-            (loading dots) which would be invalid inside a <p>. */}
-        <div className="text-sm whitespace-pre-wrap leading-relaxed">{children}</div>
+        {/* div, not p — assistant content includes block-level markdown
+            (tables, headings) and the loading dots, both invalid inside <p>. */}
+        <div
+          className={`text-sm leading-relaxed ${role === 'user' ? 'whitespace-pre-wrap' : ''}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )

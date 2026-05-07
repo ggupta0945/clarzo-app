@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel } from '@/lib/ai'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { generateText } from 'ai'
 
@@ -56,14 +56,11 @@ Anchor your answer in the company data above. When you go beyond it, label the i
 
   try {
     const { text } = await generateText({
-      model: geminiModel,
+      model: chatModel,
       system,
       prompt: question,
       maxOutputTokens: 10000,
       temperature: 0.5,
-      providerOptions: {
-        google: { safetySettings: geminiSafetySettings },
-      },
     })
     return NextResponse.json({ text })
   } catch (err) {

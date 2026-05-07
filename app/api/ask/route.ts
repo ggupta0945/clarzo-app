@@ -6,7 +6,7 @@ import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
 import { getUserGoals } from '@/lib/goals'
 import { buildSystemPrompt } from '@/lib/chat-context'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
 
@@ -75,16 +75,11 @@ export async function POST(req: NextRequest) {
   }
 
   const result = streamText({
-    model: geminiModel,
+    model: chatModel,
     system,
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
-    providerOptions: {
-      google: {
-        safetySettings: geminiSafetySettings,
-      },
-    },
     onFinish: async ({ text }) => {
       if (!text) return
       const { error } = await supabase

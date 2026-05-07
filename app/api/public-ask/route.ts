@@ -1,6 +1,6 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { NextRequest, NextResponse } from 'next/server'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel } from '@/lib/ai'
 import { buildPublicSystemPrompt } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
@@ -39,16 +39,11 @@ export async function POST(req: NextRequest) {
   const { messages } = (await req.json()) as { messages: UIMessage[] }
 
   const result = streamText({
-    model: geminiModel,
+    model: chatModel,
     system: buildPublicSystemPrompt(),
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
-    providerOptions: {
-      google: {
-        safetySettings: geminiSafetySettings,
-      },
-    },
   })
 
   const response = result.toTextStreamResponse()

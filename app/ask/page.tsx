@@ -5,6 +5,7 @@ import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { captureEvent } from '@/lib/analytics/client'
+import { MarkdownMessage } from '@/components/markdown-message'
 
 const SUGGESTED = [
   "Summarize HDFC Bank's latest quarterly concall",
@@ -147,7 +148,11 @@ export default function PublicAskPage() {
           <div className="max-w-2xl mx-auto space-y-4">
             {liveMessages.map((m) => (
               <Bubble key={m.id} role={m.role}>
-                {m.content}
+                {m.role === 'assistant' ? (
+                  <MarkdownMessage content={m.content} />
+                ) : (
+                  m.content
+                )}
                 {m.role === 'assistant' &&
                   isLoading &&
                   m.id === liveMessages[liveMessages.length - 1]?.id && (
@@ -243,7 +248,9 @@ function Bubble({
         {role === 'assistant' && (
           <p className="text-xs text-[#34d399] mb-1 font-medium">Clarzo</p>
         )}
-        <p className="whitespace-pre-wrap">{children}</p>
+        {/* div wrapper — assistant content may contain block-level markdown
+            (tables, headings) which is invalid HTML inside a <p>. */}
+        <div className={role === 'user' ? 'whitespace-pre-wrap' : ''}>{children}</div>
       </div>
     </div>
   )

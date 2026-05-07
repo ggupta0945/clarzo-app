@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
+import { createAnthropic } from '@ai-sdk/anthropic'
 import Anthropic from '@anthropic-ai/sdk'
 
 type AIProvider = 'gemini' | 'anthropic'
@@ -10,10 +11,19 @@ export const gemini = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 })
 
-// Gemini 2.5 Flash — newer, smarter, same price tier as 2.0 Flash. 1M context
-// is overkill for our prompts (~3K tokens) but keeps the door open for
-// dropping more portfolio history in.
+// Gemini 2.5 Flash powers the upload/parsing path (PDFs, images) where
+// throughput and structured-extraction quality matter more than reasoning.
 export const geminiModel = gemini('gemini-2.5-flash')
+
+const anthropicProvider = createAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+// Claude Sonnet 4.6 powers the chat surfaces. Frontier-tier reasoning on
+// equity research questions, tight format adherence (TL;DR + tables +
+// follow-ups), and meaningfully better than Flash on Indian-market context.
+// Override per-route by passing a different model id to anthropicProvider().
+export const chatModel = anthropicProvider('claude-sonnet-4-6')
 
 // Finance content occasionally trips Gemini's default safety filter — a
 // question like "is my portfolio risky?" can return an empty stream with
