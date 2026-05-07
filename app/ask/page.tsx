@@ -7,10 +7,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { captureEvent } from '@/lib/analytics/client'
 
 const SUGGESTED = [
-  'Is HDFC Bank a good long-term hold?',
-  "What's a good emergency fund for a ₹1L/month earner?",
-  'Should I do SIP or lump sum right now?',
-  'How is gold ETF different from physical gold?',
+  "Summarize HDFC Bank's latest quarterly concall",
+  'Show me debt-free small caps with ROE > 20%',
+  'Which stocks benefit from the defence capex theme?',
+  "Compare TCS vs Infosys margins over the last 4 quarters",
 ]
 
 export default function PublicAskPage() {
@@ -116,10 +116,10 @@ export default function PublicAskPage() {
         {!hasMessages ? (
           <div className="max-w-2xl mx-auto">
             <h1 className="text-3xl sm:text-4xl mb-3">
-              Ask Clarzo anything about money.
+              Ask Clarzo about Indian stocks.
             </h1>
             <p className="text-[#88b098] mb-8">
-              Free. No signup. 3 questions to get you started.
+              Equity research, concall summaries, screening — across NSE & BSE. Free. 3 questions to get you started.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
@@ -207,7 +207,7 @@ export default function PublicAskPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isLoading}
-              placeholder="Ask anything about money..."
+              placeholder="Ask about a stock, sector, or theme..."
               className="flex-1 bg-[#071a10] border border-[#1a4a2e] focus:border-[#34d399] rounded-full px-5 py-3 text-[#e4f0e8] placeholder-[#4a7a5a] outline-none transition disabled:opacity-50"
             />
             <button
