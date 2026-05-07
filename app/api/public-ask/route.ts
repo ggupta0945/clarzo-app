@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
     model: geminiModel,
     system: buildPublicSystemPrompt(),
     messages: await convertToModelMessages(messages),
-    maxOutputTokens: 400,
-    temperature: 0.7,
+    maxOutputTokens: 1500,
+    temperature: 0.5,
     providerOptions: {
       google: {
         safetySettings: geminiSafetySettings,
