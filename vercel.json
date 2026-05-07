@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/weekly-digest",
       "schedule": "30 3 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-mf-nav",
+      "schedule": "30 16 * * 1-5"
     }
   ]
 }
