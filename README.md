@@ -17,6 +17,7 @@ AI money coach for Indian investors. Users sign in, upload portfolio holdings, s
 - Razorpay webhook unlocks Pro
 - PostHog analytics for the key funnel
 - Weekly email digest cron via Vercel Cron + Resend
+- Mutual Fund discover, detail, comparison, watchlist, news at `/funds`
 
 ### Analytics events
 
@@ -84,6 +85,45 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Mutual Fund segment (`/funds`)
+
+The `/funds` segment is a discover-first MF research surface:
+
+- `/funds` — top performers across all categories + curated rails (Large Cap, Mid Cap, Small Cap, Flexi Cap, ELSS, Aggressive Hybrid) + browse-by-category and browse-by-AMC tile grids.
+- `/funds/[schemeCode]` — fund detail with NAV chart (1M / 3M / 6M / 1Y / 3Y / 5Y / All), returns vs benchmark, beat-the-benchmark scorecard, SIP & lumpsum projection, peer comparison, change history, and a Google News feed.
+- `/funds/category/[category]` — leaderboard for any SEBI sub-category.
+- `/funds/amc/[amc]` — every Direct/Growth scheme from a single AMC.
+- `/funds/compare?codes=A,B,C` — side-by-side comparison of up to 4 funds.
+- `/funds/search?q=...` — ILIKE search across scheme names.
+- `/funds/watchlist` — signed-in users; tracks funds they want updates on.
+
+### One-time data setup
+
+After running migration `008_create_mutual_funds.sql` in Supabase, populate the new tables:
+
+```bash
+# 1. Seed scheme master from AMFI (≈ 12,000 schemes; ~30s)
+npx dotenv -e .env.local -- npx tsx scripts/sync-mf-master.ts
+
+# 2. Pull historical NAVs from mfapi.in (Direct/Growth only is enough to start)
+#    This is the slow one — ~30 min for 4,000 schemes at concurrency=6.
+npx dotenv -e .env.local -- npx tsx scripts/sync-mf-history.ts --only-direct --limit 4000
+
+# 3. Compute 1Y / 3Y / 5Y / 10Y / SI returns + category ranks
+npx dotenv -e .env.local -- npx tsx scripts/compute-mf-returns.ts
+```
+
+### Daily refresh
+
+`vercel.json` schedules `/api/cron/sync-mf-nav` weekdays at 22:00 IST (after AMFI publishes). It refreshes `nav_latest` (used by portfolio enrichment) and appends today's NAV to `mf_nav_history`. Recompute returns on a weekly cadence by re-running `scripts/compute-mf-returns.ts`.
+
+### Data sources
+
+- **AMFI scheme master + daily NAV** — `https://www.amfiindia.com/spages/NAVAll.txt` (authoritative for Indian MFs)
+- **Historical NAV** — `https://api.mfapi.in/mf/{scheme_code}` (free public mirror of AMFI)
+- **News** — Google News RSS, fund-name keyword query
+- **Category, plan, option, AMC** — inferred from scheme name via `lib/mutual-funds/categories.ts`
 
 ## Days 4-7 Plan
 

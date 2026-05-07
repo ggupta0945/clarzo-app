@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 
 type Profile = { name: string | null; email: string | null }
 
-type IconName = 'home' | 'briefcase' | 'sparkle' | 'goal' | 'compass' | 'crown' | 'tools' | 'family'
+type IconName = 'home' | 'briefcase' | 'sparkle' | 'goal' | 'compass' | 'crown' | 'tools' | 'family' | 'funds'
 
 type NavLink = {
   href: string
@@ -23,6 +23,7 @@ type NavLink = {
 const LINKS: NavLink[] = [
   { href: '/dashboard', label: 'My Portfolio', icon: 'home' },
   { href: '/dashboard/stocks', label: 'Stocks', icon: 'briefcase' },
+  { href: '/funds', label: 'Mutual Funds', icon: 'funds' },
   { href: '/dashboard/ask', label: 'Ask Clarzo', icon: 'sparkle' },
   { href: '/dashboard/goals', label: 'Goals', icon: 'goal' },
   { href: '/dashboard/discover', label: 'Discover', icon: 'compass' },
@@ -340,6 +341,17 @@ function Icon({ name }: { name: IconName }) {
           <circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      )
+    case 'funds':
+      return (
+        <svg {...common}>
+          <path d="M3 3v18h18" />
+          <path d="M7 14l4-4 3 3 5-6" />
+          <circle cx="7" cy="14" r="1.2" />
+          <circle cx="11" cy="10" r="1.2" />
+          <circle cx="14" cy="13" r="1.2" />
+          <circle cx="19" cy="7" r="1.2" />
         </svg>
       )
   }
