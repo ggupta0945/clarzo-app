@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel, chatProviderOptions } from '@/lib/ai'
 import { generateText } from 'ai'
 
 export const maxDuration = 30
@@ -58,14 +58,12 @@ RULES
 
   try {
     const { text } = await generateText({
-      model: geminiModel,
+      model: chatModel,
       system,
       prompt: question,
       maxOutputTokens: 400,
       temperature: 0.7,
-      providerOptions: {
-        google: { safetySettings: geminiSafetySettings },
-      },
+      providerOptions: chatProviderOptions,
     })
     return NextResponse.json({ text })
   } catch (err) {

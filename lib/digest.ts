@@ -1,7 +1,7 @@
 import { generateText } from 'ai'
 import { Resend } from 'resend'
 import { aggregateByMcap, aggregateBySector, topHoldings } from '@/lib/allocation'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel, chatProviderOptions } from '@/lib/ai'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { computePortfolioSummary, getUserHoldings, type EnrichedHolding } from '@/lib/portfolio'
 
@@ -107,7 +107,7 @@ async function generateDigestInsight(holdings: EnrichedHolding[]): Promise<strin
 
   try {
     const result = await generateText({
-      model: geminiModel,
+      model: chatModel,
       system:
         'You write concise portfolio observations for Indian retail investors. Never give buy/sell advice. Be specific, calm, and plain-English.',
       prompt: `Write ONE useful sentence for a weekly portfolio email.
@@ -125,11 +125,7 @@ Portfolio data:
 - Top holdings by value: ${top.map((h) => `${h.scheme_name} ${percentOfPortfolio(h, holdings).toFixed(0)}%`).join(', ')}`,
       maxOutputTokens: 80,
       temperature: 0.35,
-      providerOptions: {
-        google: {
-          safetySettings: geminiSafetySettings,
-        },
-      },
+      providerOptions: chatProviderOptions,
     })
 
     const clean = result.text.replace(/^["']|["']$/g, '').trim()

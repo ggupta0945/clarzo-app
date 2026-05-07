@@ -6,7 +6,7 @@ import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
 import { getUserGoals } from '@/lib/goals'
 import { buildSystemPrompt } from '@/lib/chat-context'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel, chatProviderOptions } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = streamText({
-    model: geminiModel,
+    model: chatModel,
     system,
     messages: await convertToModelMessages(messages),
     // Hard cap so a runaway model can't blow our token budget; 600 tokens is
@@ -83,11 +83,7 @@ export async function POST(req: NextRequest) {
     // auto-greet 3-bullet snapshot.
     maxOutputTokens: 600,
     temperature: 0.7,
-    providerOptions: {
-      google: {
-        safetySettings: geminiSafetySettings,
-      },
-    },
+    providerOptions: chatProviderOptions,
     onFinish: async ({ text }) => {
       if (!text) return
       const { error } = await supabase

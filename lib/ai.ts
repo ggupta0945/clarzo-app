@@ -1,10 +1,16 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
 import Anthropic from '@anthropic-ai/sdk'
+import type { LanguageModel } from 'ai'
 
-type AIProvider = 'gemini' | 'anthropic'
+type AIProvider = 'gemini' | 'openai'
 
-const AI_PROVIDER: AIProvider = (process.env.AI_PROVIDER as AIProvider) ?? 'gemini'
+// Default to OpenAI since the OPENAI_API_KEY is the active key in production.
+// Override via AI_PROVIDER=gemini if/when the Gemini key is restored.
+const AI_PROVIDER: AIProvider = (process.env.AI_PROVIDER as AIProvider) ?? 'openai'
+
+// ---------------- Gemini ----------------
 
 export const gemini = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -28,6 +34,30 @@ export const geminiSafetySettings: NonNullable<
   { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
 ]
+
+// ---------------- OpenAI ----------------
+
+export const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
+// gpt-4o-mini covers our chat / digest needs at a fraction of gpt-4o's cost.
+// Override via OPENAI_MODEL if you want to bump quality.
+export const openaiModel = openai(process.env.OPENAI_MODEL ?? 'gpt-4o-mini')
+
+// ---------------- Provider-agnostic exports ----------------
+
+// One model handle that every call site uses; swap providers via env var
+// without touching route code.
+export const chatModel: LanguageModel = AI_PROVIDER === 'gemini' ? geminiModel : openaiModel
+
+// Provider-specific options bundle. Gemini needs safetySettings to avoid
+// false-positive blocks on finance prompts; OpenAI doesn't need any.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const chatProviderOptions: Record<string, any> | undefined =
+  AI_PROVIDER === 'gemini'
+    ? { google: { safetySettings: geminiSafetySettings } }
+    : undefined
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
