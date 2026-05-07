@@ -10,7 +10,7 @@ import { geminiModel, geminiSafetySettings } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -78,11 +78,8 @@ export async function POST(req: NextRequest) {
     model: geminiModel,
     system,
     messages: await convertToModelMessages(messages),
-    // Hard cap so a runaway model can't blow our token budget; 600 tokens is
-    // ~450 words, well past our 120-word target but enough headroom for the
-    // auto-greet 3-bullet snapshot.
-    maxOutputTokens: 600,
-    temperature: 0.7,
+    maxOutputTokens: 10000,
+    temperature: 0.5,
     providerOptions: {
       google: {
         safetySettings: geminiSafetySettings,

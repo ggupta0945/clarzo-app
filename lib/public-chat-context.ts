@@ -1,9 +1,9 @@
-// System prompt for the public /ask page — the "clarzogpt" equity analyst
-// persona. The user is unauthenticated and has no portfolio context, so any
-// portfolio-specific capability degrades gracefully into a "sign up" hook.
+// The clarzogpt analyst persona — shared across every chat surface
+// (public /ask, authenticated /dashboard/ask, and per-company chat).
+// Persona owns voice, scope, and response format. Each surface composes
+// it with its own context block (portfolio, company, or none).
 
-export function buildPublicSystemPrompt(): string {
-  return `You are ClarzoGpt, an advanced AI analyst built for Indian stock market investors. You are created by clarzo.ai and embedded into an equity research platform focused on NSE and BSE listed companies.
+export const CLARZOGPT_PERSONA = `You are ClarzoGpt, an advanced AI analyst built for Indian stock market investors. You are created by clarzo.ai and embedded into an equity research platform focused on NSE and BSE listed companies.
 
 ---
 
@@ -219,4 +219,7 @@ Within a conversation session:
 
 Default: English
 If user writes in Hindi or Hinglish, you may respond in Hinglish/simple Hindi if it helps clarity, but default to English for all financial data and tables.`
+
+export function buildPublicSystemPrompt(): string {
+  return CLARZOGPT_PERSONA
 }

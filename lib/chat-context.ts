@@ -3,6 +3,7 @@ import type { Allocation } from './allocation'
 import type { Insight } from './insights'
 import type { Goal } from './goals'
 import { projectGoal } from './goal-projection'
+import { CLARZOGPT_PERSONA } from './public-chat-context'
 
 type RiskProfile = {
   age?: string
@@ -26,17 +27,20 @@ type Ctx = {
   riskProfile?: RiskProfile | null
 }
 
-// The hero prompt. Owns ClarzoGPT's voice and the contract with the model:
-// always cite real numbers, never invent data, frame suggestions as options
-// (not directives), keep it short. The portfolio block is rebuilt on every
-// turn — model sees fresh holdings, no stale state.
+// Authenticated dashboard chat. Uses the canonical clarzogpt analyst persona
+// from public-chat-context.ts, then appends a fresh portfolio context block
+// on every turn so the model sees current holdings (no stale state).
 export function buildSystemPrompt(ctx: Ctx): string {
   const { holdings, summary, sectors, mcaps, insights, goals, riskProfile } = ctx
 
   if (holdings.length === 0) {
-    return `You are Clarzo — an AI money coach for Indian investors. You speak in plain English, like a smart friend, not a banker.
+    return `${CLARZOGPT_PERSONA}
 
-The user has not uploaded a portfolio yet. Encourage them to upload one (a Zerodha/Groww CSV, Excel, PDF, or screenshot) at /dashboard/upload. They can also add FDs, gold, real estate, and loans. Until then, you can answer general personal-finance questions about Indian markets, mutual funds, taxes, and basic concepts. Keep responses under 120 words. Never give explicit buy/sell calls.`
+---
+
+## USER CONTEXT
+
+The user is signed in but has not uploaded a portfolio yet. Encourage them to upload one (Zerodha/Groww CSV, Excel, PDF, or screenshot) at /dashboard/upload — they can also add FDs, gold, real estate, and loans. Until then, keep answers focused on Indian equities, IPOs, ETFs, indices, and screening as per your scope.`
   }
 
   const goalsBlock =
@@ -75,46 +79,37 @@ The user has not uploaded a portfolio yet. Encourage them to upload one (a Zerod
   const totalDebt = Math.abs(debtHoldings.reduce((s, h) => s + h.current_value, 0))
 
   const riskBlock = riskProfile?.risk_score
-    ? `RISK PROFILE
+    ? `### Risk profile
 Stated risk appetite: ${riskProfile.risk_score} (${riskProfile.age ?? '?'} yrs, ${riskProfile.horizon ?? '?'} horizon)
 Dependents: ${riskProfile.dependents ?? '?'} · Existing debt: ${riskProfile.existing_debt ?? '?'} · Insurance: ${riskProfile.insurance ?? '?'}
 Primary goals: ${(riskProfile.goals ?? []).join(', ') || '(not set)'}
-Note: Tailor advice to this risk appetite. A conservative investor should not be pushed into volatile instruments.`
+Tailor analysis to this risk appetite — don't push a conservative investor toward volatile instruments.`
     : ''
 
   const otherAssetsBlock =
     totalFd + totalGold + totalRe + totalDebt > 0
-      ? `OTHER ASSETS & LIABILITIES
+      ? `### Other assets & liabilities
 ${totalFd > 0 ? `- Fixed Deposits: ₹${fmt(totalFd)} across ${fdHoldings.length} FD(s)` : ''}
 ${totalGold > 0 ? `- Gold: ₹${fmt(totalGold)} (${goldHoldings.reduce((s, h) => s + h.units, 0).toFixed(2)}g)` : ''}
 ${totalRe > 0 ? `- Real Estate: ₹${fmt(totalRe)} (${reHoldings.length} propert${reHoldings.length === 1 ? 'y' : 'ies'})` : ''}
 ${totalDebt > 0 ? `- Outstanding Loans: ₹${fmt(totalDebt)} (reduces net worth)` : ''}`.trim()
       : ''
 
-  return `You are Clarzo — an AI money coach for Indian investors.
+  return `${CLARZOGPT_PERSONA}
 
-VOICE
-- Plain English, like a smart friend, not a banker.
-- Direct. Use the user's actual numbers, not generic advice.
-- Honest about uncertainty. Comfortable with Hindi-English code-switching if the user does it.
-- Never preachy or pushy.
+---
 
-RULES
-1. Never give explicit "buy X" or "sell Y" advice. Frame as options with tradeoffs ("one option is X — the tradeoff is Y").
-2. Always cite specific numbers from the portfolio below. Never invent figures.
-3. Default response under 120 words. Go longer only if the user asks for detail.
-4. End with either a short follow-up question or a concrete next step.
-5. If asked something unrelated to finance or this user's money, redirect briefly.
-6. Add "Not investment advice" only when making suggestions, not for factual answers.
+## USER'S LIVE PORTFOLIO
 
-${riskBlock ? riskBlock + '\n\n' : ''}USER'S PORTFOLIO RIGHT NOW
+This user has connected their portfolio. Use these numbers when answering — never invent figures, always cite the user's actual holdings.
+
+### Snapshot
 Net worth: ₹${fmt(summary.netWorth)}
 Invested: ₹${fmt(summary.invested)}
 Returns: ${signed(summary.pnlPct)}% (${signed(summary.pnl, true)})
 Holdings: ${summary.count}
-${otherAssetsBlock ? '\n' + otherAssetsBlock : ''}
 
-TOP HOLDINGS (by current value)
+${otherAssetsBlock ? otherAssetsBlock + '\n\n' : ''}### Top holdings (by current value)
 ${top
   .map(
     (h) =>
@@ -122,22 +117,22 @@ ${top
   )
   .join('\n')}${holdings.length > 10 ? `\n…and ${holdings.length - 10} more.` : ''}
 
-SECTOR ALLOCATION
+### Sector allocation
 ${sectors.slices
   .slice(0, 6)
   .map((s) => `- ${s.label}: ${s.pct.toFixed(1)}% (₹${fmt(s.value)})`)
   .join('\n')}
 
-MARKET CAP MIX
+### Market cap mix
 ${mcaps.slices.map((m) => `- ${m.label}: ${m.pct.toFixed(1)}%`).join('\n')}
 
-INSIGHTS WE'VE ALREADY DETECTED
+### Insights already detected
 ${insights.length > 0 ? insights.map((i) => `- [${i.severity}] ${i.title}: ${i.description}`).join('\n') : '(none)'}
 
-USER'S GOALS (projections assume current net worth compounds at 12%/yr untouched)
+### User's goals (projections assume current net worth compounds at 12%/yr untouched)
 ${goalsBlock}
 
-Now answer the user. Be specific, use their actual numbers, suggest concrete options when appropriate, end with a follow-up question or next step.`
+${riskBlock ? riskBlock + '\n\n' : ''}When the user asks about their portfolio, anchor every claim in the numbers above. When they ask about a stock or sector outside their portfolio, answer in your standard analyst format.`
 }
 
 function fmt(n: number): string {

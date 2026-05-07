@@ -4,7 +4,7 @@ import { geminiModel, geminiSafetySettings } from '@/lib/ai'
 import { buildPublicSystemPrompt } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // Public, unauthenticated chat endpoint. Rate limited by hashed IP — 3
 // questions per 30 days. Hashed because raw IPs are PII; Upstash only ever
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     model: geminiModel,
     system: buildPublicSystemPrompt(),
     messages: await convertToModelMessages(messages),
-    maxOutputTokens: 1500,
+    maxOutputTokens: 10000,
     temperature: 0.5,
     providerOptions: {
       google: {
