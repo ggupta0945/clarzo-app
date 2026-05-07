@@ -1,7 +1,7 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { NextRequest, NextResponse } from 'next/server'
 import { chatModel } from '@/lib/ai'
-import { buildPublicSystemPrompt } from '@/lib/public-chat-context'
+import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
 export const maxDuration = 60
@@ -40,7 +40,19 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: chatModel,
-    system: buildPublicSystemPrompt(),
+    // Persona is byte-stable across users → mark it as the cache breakpoint.
+    // Anthropic caches everything from message start through the marked
+    // block; cache reads cost ~10% of normal input tokens after the first
+    // call, which dominates total input on this prompt-heavy surface.
+    system: [
+      {
+        role: 'system',
+        content: CLARZOGPT_PERSONA,
+        providerOptions: {
+          anthropic: { cacheControl: { type: 'ephemeral' } },
+        },
+      },
+    ],
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,

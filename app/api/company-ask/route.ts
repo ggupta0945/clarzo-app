@@ -34,11 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'question and company are required' }, { status: 400 })
   }
 
-  const system = `${CLARZOGPT_PERSONA}
-
----
-
-## COMPANY CONTEXT (the user is currently viewing this company)
+  const companyBlock = `## COMPANY CONTEXT (the user is currently viewing this company)
 
 Name: ${company.full} (${company.bse})
 About: ${company.about}
@@ -57,7 +53,20 @@ Anchor your answer in the company data above. When you go beyond it, label the i
   try {
     const { text } = await generateText({
       model: chatModel,
-      system,
+      // Persona is the cache breakpoint; per-company block stays uncached.
+      system: [
+        {
+          role: 'system',
+          content: CLARZOGPT_PERSONA,
+          providerOptions: {
+            anthropic: { cacheControl: { type: 'ephemeral' } },
+          },
+        },
+        {
+          role: 'system',
+          content: companyBlock,
+        },
+      ],
       prompt: question,
       maxOutputTokens: 10000,
       temperature: 0.5,

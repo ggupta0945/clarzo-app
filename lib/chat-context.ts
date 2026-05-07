@@ -3,7 +3,6 @@ import type { Allocation } from './allocation'
 import type { Insight } from './insights'
 import type { Goal } from './goals'
 import { projectGoal } from './goal-projection'
-import { CLARZOGPT_PERSONA } from './public-chat-context'
 
 type RiskProfile = {
   age?: string
@@ -27,18 +26,15 @@ type Ctx = {
   riskProfile?: RiskProfile | null
 }
 
-// Authenticated dashboard chat. Uses the canonical clarzogpt analyst persona
-// from public-chat-context.ts, then appends a fresh portfolio context block
-// on every turn so the model sees current holdings (no stale state).
-export function buildSystemPrompt(ctx: Ctx): string {
+// Builds ONLY the dynamic portfolio block — the persona is injected
+// separately in the route so it can be marked as a cache breakpoint.
+// Returning this as a separate string keeps the cached half byte-stable
+// across users while this half varies per turn.
+export function buildPortfolioBlock(ctx: Ctx): string {
   const { holdings, summary, sectors, mcaps, insights, goals, riskProfile } = ctx
 
   if (holdings.length === 0) {
-    return `${CLARZOGPT_PERSONA}
-
----
-
-## USER CONTEXT
+    return `## USER CONTEXT
 
 The user is signed in but has not uploaded a portfolio yet. Encourage them to upload one (Zerodha/Groww CSV, Excel, PDF, or screenshot) at /dashboard/upload — they can also add FDs, gold, real estate, and loans. Until then, keep answers focused on Indian equities, IPOs, ETFs, indices, and screening as per your scope.`
   }
@@ -68,7 +64,6 @@ The user is signed in but has not uploaded a portfolio yet. Encourage them to up
     .sort((a, b) => b.current_value - a.current_value)
     .slice(0, 10)
 
-  // Segregate new asset classes for the prompt
   const fdHoldings = holdings.filter((h) => h.asset_type === 'fd')
   const goldHoldings = holdings.filter((h) => h.asset_type === 'gold')
   const reHoldings = holdings.filter((h) => h.asset_type === 'real_estate')
@@ -95,11 +90,7 @@ ${totalRe > 0 ? `- Real Estate: ₹${fmt(totalRe)} (${reHoldings.length} propert
 ${totalDebt > 0 ? `- Outstanding Loans: ₹${fmt(totalDebt)} (reduces net worth)` : ''}`.trim()
       : ''
 
-  return `${CLARZOGPT_PERSONA}
-
----
-
-## USER'S LIVE PORTFOLIO
+  return `## USER'S LIVE PORTFOLIO
 
 This user has connected their portfolio. Use these numbers when answering — never invent figures, always cite the user's actual holdings.
 
