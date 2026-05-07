@@ -3,6 +3,8 @@
 // headers like "Equity Scheme - Large Cap Fund" but the parser-friendly
 // derivation is by name tokens, since individual rows don't carry the header.
 
+import type { MfPlan, MfOption } from './types'
+
 export type SebiCategory =
   | 'Equity'
   | 'Debt'
