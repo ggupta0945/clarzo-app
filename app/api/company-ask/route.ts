@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
+import { chatModel } from '@/lib/ai'
+import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { generateText } from 'ai'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -33,39 +34,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'question and company are required' }, { status: 400 })
   }
 
-  const system = `You are ClarzoGPT — an expert Indian equity research analyst embedded in Clarzo, a personal finance app.
+  const companyBlock = `## COMPANY CONTEXT (the user is currently viewing this company)
 
-COMPANY CONTEXT
 Name: ${company.full} (${company.bse})
 About: ${company.about}
 Current Price: ${company.price} | Market Cap: ${company.mcap}
 P/E: ${company.pe} | ROE: ${company.roe} | Dividend Yield: ${company.div} | Revenue: ${company.rev}
 Sector: ${company.facts['Sector'] ?? 'N/A'} | Founded: ${company.facts['Founded'] ?? 'N/A'}
 
-STRENGTHS
+### Strengths
 ${company.pros.map((p) => `- ${p}`).join('\n')}
 
-RISKS
+### Risks
 ${company.cons.map((c) => `- ${c}`).join('\n')}
 
-RULES
-1. Answer in under 150 words unless the user asks for detail.
-2. Use the company data above as your primary source. Acknowledge when you are reasoning beyond it.
-3. Never give explicit "buy" or "sell" directives. Frame as options with tradeoffs.
-4. End with either a follow-up question or a concrete next step.
-5. Always add "Not investment advice." at the end when making suggestions.
-6. Keep the tone like a smart, well-read friend — not a sales pitch.`
+Anchor your answer in the company data above. When you go beyond it, label the inference. Stick to your standard analyst response format.`
 
   try {
     const { text } = await generateText({
-      model: geminiModel,
-      system,
+      model: chatModel,
+      // Persona is the cache breakpoint; per-company block stays uncached.
+      system: [
+        {
+          role: 'system',
+          content: CLARZOGPT_PERSONA,
+          providerOptions: {
+            anthropic: { cacheControl: { type: 'ephemeral' } },
+          },
+        },
+        {
+          role: 'system',
+          content: companyBlock,
+        },
+      ],
       prompt: question,
-      maxOutputTokens: 400,
-      temperature: 0.7,
-      providerOptions: {
-        google: { safetySettings: geminiSafetySettings },
-      },
+      maxOutputTokens: 10000,
+      temperature: 0.5,
     })
     return NextResponse.json({ text })
   } catch (err) {

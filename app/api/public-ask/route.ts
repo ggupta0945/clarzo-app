@@ -1,10 +1,10 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { NextRequest, NextResponse } from 'next/server'
-import { geminiModel, geminiSafetySettings } from '@/lib/ai'
-import { buildPublicSystemPrompt } from '@/lib/public-chat-context'
+import { chatModel } from '@/lib/ai'
+import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // Public, unauthenticated chat endpoint. Rate limited by hashed IP — 3
 // questions per 30 days. Hashed because raw IPs are PII; Upstash only ever
@@ -39,15 +39,27 @@ export async function POST(req: NextRequest) {
   const { messages } = (await req.json()) as { messages: UIMessage[] }
 
   const result = streamText({
-    model: geminiModel,
-    system: buildPublicSystemPrompt(),
-    messages: await convertToModelMessages(messages),
-    maxOutputTokens: 1500,
-    temperature: 0.5,
-    providerOptions: {
-      google: {
-        safetySettings: geminiSafetySettings,
+    model: chatModel,
+    // Persona is byte-stable across users → mark it as the cache breakpoint.
+    // Anthropic caches everything from message start through the marked
+    // block; cache reads cost ~10% of normal input tokens after the first
+    // call, which dominates total input on this prompt-heavy surface.
+    system: [
+      {
+        role: 'system',
+        content: CLARZOGPT_PERSONA,
+        providerOptions: {
+          anthropic: { cacheControl: { type: 'ephemeral' } },
+        },
       },
+    ],
+    messages: await convertToModelMessages(messages),
+    maxOutputTokens: 10000,
+    temperature: 0.5,
+    onError: ({ error }) => {
+      // Surfaces auth failures (e.g. missing ANTHROPIC_API_KEY) and provider
+      // errors that would otherwise drop a silent empty stream on the client.
+      console.error('[public-ask] stream error:', error)
     },
   })
 
