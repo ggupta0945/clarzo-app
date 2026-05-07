@@ -44,6 +44,11 @@ export async function POST(req: NextRequest) {
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
+    onError: ({ error }) => {
+      // Surfaces auth failures (e.g. missing ANTHROPIC_API_KEY) and provider
+      // errors that would otherwise drop a silent empty stream on the client.
+      console.error('[public-ask] stream error:', error)
+    },
   })
 
   const response = result.toTextStreamResponse()

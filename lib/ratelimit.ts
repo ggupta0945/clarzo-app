@@ -2,9 +2,9 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { createHash } from 'crypto'
 
-// Free tier cap: 10 ClarzoGPT queries per 30 days, per user. Sliding window so
-// a user who hit the limit on day 1 doesn't have to wait until day 30 — old
-// hits drop off the trailing edge.
+// Sliding-window caps. Bumped to 10000 / 30 d on both surfaces while we're
+// still iterating — effectively unlimited for any real user. Tighten back
+// (10 chat, 3 public-ask) before public launch.
 //
 // Returns null when Upstash env vars are missing (local dev without Upstash
 // configured). Callers must treat null as "no limit applies."
@@ -18,16 +18,16 @@ let publicAskLimitInstance: Ratelimit | null = null
 if (UPSTASH_URL && UPSTASH_TOKEN) {
   chatLimitInstance = new Ratelimit({
     redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(10, '30 d'),
+    limiter: Ratelimit.slidingWindow(10000, '30 d'),
     prefix: 'clarzo_chat',
     analytics: true,
   })
 
-  // Public /ask gets 3 questions per IP per 30 days. Hashed IP = key, so we
-  // never store raw IPs anywhere (Upstash sees only the hash).
+  // Public /ask: hashed IP = key, so we never store raw IPs anywhere
+  // (Upstash sees only the hash).
   publicAskLimitInstance = new Ratelimit({
     redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(3, '30 d'),
+    limiter: Ratelimit.slidingWindow(10000, '30 d'),
     prefix: 'clarzo_public_ask',
     analytics: true,
   })
