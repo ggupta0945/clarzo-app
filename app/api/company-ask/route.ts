@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { chatModel } from '@/lib/ai'
+import { chatModel, buildSystemBlocks } from '@/lib/ai'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { generateText } from 'ai'
 
@@ -53,20 +53,7 @@ Anchor your answer in the company data above. When you go beyond it, label the i
   try {
     const { text } = await generateText({
       model: chatModel,
-      // Persona is the cache breakpoint; per-company block stays uncached.
-      system: [
-        {
-          role: 'system',
-          content: CLARZOGPT_PERSONA,
-          providerOptions: {
-            anthropic: { cacheControl: { type: 'ephemeral' } },
-          },
-        },
-        {
-          role: 'system',
-          content: companyBlock,
-        },
-      ],
+        system: buildSystemBlocks(CLARZOGPT_PERSONA, companyBlock),
       prompt: question,
       maxOutputTokens: 10000,
       temperature: 0.5,

@@ -10,6 +10,7 @@ import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { chatModel } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
+import { buildSystemBlocks } from '@/lib/ai'
 
 export const maxDuration = 60
 
@@ -77,23 +78,10 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: chatModel,
-    // Two-block system: persona is byte-stable across users and is the
-    // cache breakpoint; portfolio block changes per-user-per-turn and stays
-    // uncached. After the first call, persona reads cost ~10% of normal
-    // input tokens.
-    system: [
-      {
-        role: 'system',
-        content: CLARZOGPT_PERSONA,
-        providerOptions: {
-          anthropic: { cacheControl: { type: 'ephemeral' } },
-        },
-      },
-      {
-        role: 'system',
-        content: portfolioBlock,
-      },
-    ],
+    // buildSystemBlocks returns an Anthropic multi-block array (with prompt
+    // caching on the persona block) when AI_PROVIDER=anthropic, or a plain
+    // concatenated string for Gemini. Both shapes are accepted by streamText.
+    system: buildSystemBlocks(CLARZOGPT_PERSONA, portfolioBlock),
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
