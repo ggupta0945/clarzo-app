@@ -1,7 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
-import { createAnthropic } from '@ai-sdk/anthropic'
-import Anthropic from '@anthropic-ai/sdk'
+import type { SystemModelMessage } from 'ai'
 
 type AIProvider = 'gemini' | 'anthropic'
 
@@ -11,25 +10,16 @@ export const gemini = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 })
 
-// Gemini 2.5 Flash powers the upload/parsing path (PDFs, images) where
-// throughput and structured-extraction quality matter more than reasoning.
+// Gemini 2.5 Flash powers all chat and file-parsing surfaces.
+// Switch to Anthropic by setting AI_PROVIDER=anthropic and adding
+// @ai-sdk/anthropic + a valid ANTHROPIC_API_KEY to .env.local.
 export const geminiModel = gemini('gemini-2.5-flash')
 
-const anthropicProvider = createAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
-
-// Claude Sonnet 4.6 powers the chat surfaces. Frontier-tier reasoning on
-// equity research questions, tight format adherence (TL;DR + tables +
-// follow-ups), and meaningfully better than Flash on Indian-market context.
-// Override per-route by passing a different model id to anthropicProvider().
-export const chatModel = anthropicProvider('claude-sonnet-4-6')
+export const chatModel = geminiModel
 
 // Finance content occasionally trips Gemini's default safety filter — a
 // question like "is my portfolio risky?" can return an empty stream with
-// finishReason=SAFETY. We're not generating harmful content; loosening the
-// filter is appropriate for this surface. Reused by both /api/ask and the
-// PDF/image extraction path.
+// finishReason=SAFETY. Loosening the filter is appropriate for this surface.
 export const geminiSafetySettings: NonNullable<
   GoogleGenerativeAIProviderOptions['safetySettings']
 > = [
@@ -39,8 +29,11 @@ export const geminiSafetySettings: NonNullable<
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
 ]
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+// buildSystemBlocks concatenates system prompt blocks into a single string
+// for Gemini. When switching to Anthropic, this is where prompt-caching
+// blocks would be constructed instead.
+export function buildSystemBlocks(...blocks: string[]): string {
+  return blocks.join('\n\n')
+}
 
 export { AI_PROVIDER }
