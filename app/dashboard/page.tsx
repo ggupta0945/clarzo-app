@@ -21,9 +21,16 @@ import { PortfolioHero } from '@/components/dashboard/PortfolioHero'
 import { NiftyChart } from '@/components/dashboard/NiftyChart'
 import { SamplePortfolioCTA } from '@/components/dashboard/SamplePortfolioCTA'
 import { SamplePortfolioBanner } from '@/components/dashboard/SamplePortfolioBanner'
+import { WhatChangedBanner } from '@/components/dashboard/WhatChangedBanner'
 import { TrackEvent } from '@/components/analytics/TrackEvent'
 import { aggregateBySector } from '@/lib/allocation'
 import { fetchNifty } from '@/lib/nifty-data'
+import {
+  buildSnapshot,
+  computeVisitDiff,
+  MIN_DAYS_FOR_BANNER,
+  type VisitSnapshot,
+} from '@/lib/visit-diff'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -31,7 +38,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name')
+    .select('name, last_dashboard_visit_at, last_visit_snapshot')
     .eq('id', user!.id)
     .single()
 
@@ -92,6 +99,40 @@ export default async function DashboardPage() {
   const firstName = profile?.name?.split(' ')[0] || 'there'
   const isSampleMode = holdings.some((h) => h.is_sample)
 
+  // "What changed since last visit" — compute the diff against the prior
+  // snapshot, then refresh the snapshot if at least MIN_DAYS_FOR_BANNER
+  // have elapsed. Visits closer than that don't bump the snapshot, so the
+  // user's "yesterday" reference doesn't get clobbered by an afternoon
+  // re-open. Suppressed entirely in sample mode — fake P&L deltas would
+  // be noise.
+  const prevSnapshot = profile?.last_visit_snapshot as VisitSnapshot | null
+  const visitDiff =
+    !isSampleMode && prevSnapshot
+      ? computeVisitDiff(prevSnapshot, holdings, summary, recentActions)
+      : null
+
+  if (!isSampleMode) {
+    const shouldUpdateSnapshot =
+      !profile?.last_dashboard_visit_at ||
+      (Date.now() - new Date(profile.last_dashboard_visit_at).getTime()) /
+        (1000 * 60 * 60 * 24) >=
+        MIN_DAYS_FOR_BANNER
+    if (shouldUpdateSnapshot) {
+      const nextSnapshot = buildSnapshot(holdings, summary)
+      // Fire-and-forget: a write failure here shouldn't break the page render.
+      void supabase
+        .from('profiles')
+        .update({
+          last_dashboard_visit_at: nextSnapshot.taken_at,
+          last_visit_snapshot: nextSnapshot,
+        })
+        .eq('id', user!.id)
+        .then(({ error }) => {
+          if (error) console.error('visit snapshot write failed:', error)
+        })
+    }
+  }
+
   return (
     <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8 pb-28">
       <TrackEvent
@@ -105,6 +146,7 @@ export default async function DashboardPage() {
       />
 
       {isSampleMode && <SamplePortfolioBanner />}
+      {visitDiff && <WhatChangedBanner diff={visitDiff} />}
 
       {/* Portfolio hero — title, segment pills, invested/returns, total arc.
           Re-upload + ticker chips live inside the hero header now. */}
