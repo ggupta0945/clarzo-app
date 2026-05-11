@@ -1,10 +1,10 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { NextRequest, NextResponse } from 'next/server'
-import { chatModel, chatProviderOptions } from '@/lib/ai'
-import { buildPublicSystemPrompt } from '@/lib/public-chat-context'
+import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
+import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // Public, unauthenticated chat endpoint. Rate limited by hashed IP — 3
 // questions per 30 days. Hashed because raw IPs are PII; Upstash only ever
@@ -40,11 +40,16 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: chatModel,
-    system: buildPublicSystemPrompt(),
+    system: buildSystemBlocks(CLARZOGPT_PERSONA),
     messages: await convertToModelMessages(messages),
-    maxOutputTokens: 400,
-    temperature: 0.7,
+    maxOutputTokens: 10000,
+    temperature: 0.5,
     providerOptions: chatProviderOptions,
+    onError: ({ error }) => {
+      // Surfaces auth failures (e.g. missing OPENAI_API_KEY) and provider
+      // errors that would otherwise drop a silent empty stream on the client.
+      console.error('[public-ask] stream error:', error)
+    },
   })
 
   const response = result.toTextStreamResponse()

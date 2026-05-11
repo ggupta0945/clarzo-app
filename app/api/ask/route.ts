@@ -5,12 +5,13 @@ import { getUserHoldings, computePortfolioSummary } from '@/lib/portfolio'
 import { aggregateBySector, aggregateByMcap } from '@/lib/allocation'
 import { generateInsights } from '@/lib/insights'
 import { getUserGoals } from '@/lib/goals'
-import { buildSystemPrompt } from '@/lib/chat-context'
-import { chatModel, chatProviderOptions } from '@/lib/ai'
+import { buildPortfolioBlock } from '@/lib/chat-context'
+import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
+import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -54,9 +55,9 @@ export async function POST(req: NextRequest) {
   const sectors = aggregateBySector(holdings)
   const mcaps = aggregateByMcap(holdings)
   const insights = generateInsights(holdings)
-  const riskProfile = (profileRow.data?.risk_profile ?? null) as Parameters<typeof buildSystemPrompt>[0]['riskProfile']
+  const riskProfile = (profileRow.data?.risk_profile ?? null) as Parameters<typeof buildPortfolioBlock>[0]['riskProfile']
 
-  const system = buildSystemPrompt({ holdings, summary, sectors, mcaps, insights, goals, riskProfile })
+  const portfolioBlock = buildPortfolioBlock({ holdings, summary, sectors, mcaps, insights, goals, riskProfile })
 
   // Persist the user's last turn before we stream — even if streaming fails,
   // the question is captured. We stay deliberately silent on errors here:
@@ -76,14 +77,16 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: chatModel,
-    system,
+    system: buildSystemBlocks(CLARZOGPT_PERSONA, portfolioBlock),
     messages: await convertToModelMessages(messages),
-    // Hard cap so a runaway model can't blow our token budget; 600 tokens is
-    // ~450 words, well past our 120-word target but enough headroom for the
-    // auto-greet 3-bullet snapshot.
-    maxOutputTokens: 600,
-    temperature: 0.7,
+    maxOutputTokens: 10000,
+    temperature: 0.5,
     providerOptions: chatProviderOptions,
+    onError: ({ error }) => {
+      // Surfaces auth failures (e.g. missing OPENAI_API_KEY) and provider
+      // errors that would otherwise drop a silent empty stream on the client.
+      console.error('[ask] stream error:', error)
+    },
     onFinish: async ({ text }) => {
       if (!text) return
       const { error } = await supabase

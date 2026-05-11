@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.75",
     "@ai-sdk/google": "^3.0.64",
     "@ai-sdk/openai": "^3.0.58",
     "@ai-sdk/react": "^3.0.170",
@@ -25,7 +26,9 @@
     "razorpay": "^2.9.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
+    "remark-gfm": "^4.0.1",
     "resend": "^6.12.2"
   },
   "devDependencies": {
