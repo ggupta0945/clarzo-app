@@ -35,10 +35,45 @@ export type PortfolioSummary = {
 export async function getUserHoldings(userId: string, client?: SupabaseClient<any, 'public', any>): Promise<EnrichedHolding[]> {
   const supabase = client ?? (await createClient())
 
-  const { data: holdings, error: holdingsErr } = await supabase
-    .from('holdings')
-    .select('id, isin, scheme_name, units, avg_cost, asset_type, current_price, is_sample')
-    .eq('user_id', userId)
+  type HoldingRow = {
+    id: string
+    isin: string | null
+    scheme_name: string
+    units: number
+    avg_cost: number | null
+    asset_type: string
+    current_price: number | null
+    is_sample?: boolean | null
+  }
+
+  const BASE_COLS = 'id, isin, scheme_name, units, avg_cost, asset_type, current_price'
+  // Try with is_sample first; fall back without it if the column doesn't
+  // exist yet (migration 008 not run). Without this fallback, every
+  // production deploy that lands before the migration breaks the dashboard
+  // — the SELECT errors and we return []. Tolerate the lag.
+  let holdings: HoldingRow[] | null = null
+  let holdingsErr: { message?: string; code?: string } | null = null
+  {
+    const res = await supabase
+      .from('holdings')
+      .select(`${BASE_COLS}, is_sample`)
+      .eq('user_id', userId)
+    holdings = res.data as HoldingRow[] | null
+    holdingsErr = res.error
+  }
+  if (holdingsErr) {
+    const looksLikeMissingColumn =
+      holdingsErr.code === '42703' ||
+      (typeof holdingsErr.message === 'string' && holdingsErr.message.includes('is_sample'))
+    if (looksLikeMissingColumn) {
+      const retry = await supabase
+        .from('holdings')
+        .select(BASE_COLS)
+        .eq('user_id', userId)
+      holdings = retry.data as HoldingRow[] | null
+      holdingsErr = retry.error
+    }
+  }
 
   if (holdingsErr) {
     console.error('getUserHoldings error:', holdingsErr.message)

@@ -37,11 +37,31 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name, last_dashboard_visit_at, last_visit_snapshot')
-    .eq('id', user!.id)
-    .single()
+  // Try selecting the migration-009 fields; fall back to a name-only select
+  // if those columns don't exist yet so we don't regress the welcome message
+  // when the migration is delayed.
+  let profile: {
+    name?: string | null
+    last_dashboard_visit_at?: string | null
+    last_visit_snapshot?: VisitSnapshot | null
+  } | null = null
+  {
+    const res = await supabase
+      .from('profiles')
+      .select('name, last_dashboard_visit_at, last_visit_snapshot')
+      .eq('id', user!.id)
+      .single()
+    if (res.error) {
+      const fb = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user!.id)
+        .single()
+      profile = fb.data
+    } else {
+      profile = res.data
+    }
+  }
 
   const holdings = await getUserHoldings(user!.id)
   const summary = computePortfolioSummary(holdings)
