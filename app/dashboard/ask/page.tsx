@@ -5,6 +5,8 @@ import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { captureEvent } from '@/lib/analytics/client'
+import { UploadButton } from '@/components/chat/UploadButton'
+import { VoiceButton } from '@/components/chat/VoiceButton'
 import { MarkdownMessage } from '@/components/markdown-message'
 
 const SUGGESTED_QUESTIONS = [
@@ -291,7 +293,21 @@ function AskPageInner() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 mt-3 flex-shrink-0">
+      <form onSubmit={handleSubmit} className="flex gap-2 mt-3 flex-shrink-0 items-center">
+        <UploadButton
+          disabled={isLoading || hydrating}
+          onUploaded={({ inserted }) => {
+            // Drop a marker message into the chat so the thread reflects
+            // the new portfolio context without the user having to retype.
+            sendMessage({
+              text: `I just uploaded a fresh portfolio with ${inserted} holdings. Give me a 3-bullet snapshot: most important thing, biggest risk, top opportunity. Concrete numbers from my holdings.`,
+            })
+          }}
+        />
+        <VoiceButton
+          disabled={isLoading || hydrating || rateLimit.blocked}
+          onAppend={(text) => setInput((cur) => (cur ? `${cur} ${text}` : text))}
+        />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

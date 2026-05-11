@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import { useEffect, useRef, useState } from 'react'
+import { UploadButton } from '@/components/chat/UploadButton'
+import { VoiceButton } from '@/components/chat/VoiceButton'
 
 // Inline Ask Clarzo bar: fixed to the viewport bottom on /dashboard. Sending
 // a message streams the response into a small scrollable panel that sits
@@ -118,12 +120,20 @@ export function AskClarzoBar() {
           className="bg-surface border border-line-strong rounded-2xl shadow-lg shadow-[#1f235b]/8 focus-within:border-accent focus-within:shadow-xl transition px-4 py-2.5"
         >
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-6 w-6 items-center justify-center text-accent shrink-0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </span>
+            <UploadButton
+              size="sm"
+              disabled={isLoading}
+              onUploaded={({ inserted }) => {
+                sendMessage({
+                  text: `I just uploaded a fresh portfolio with ${inserted} holdings. Give me a 3-bullet snapshot: most important thing, biggest risk, top opportunity. Concrete numbers from my holdings.`,
+                })
+              }}
+            />
+            <VoiceButton
+              size="sm"
+              disabled={isLoading}
+              onAppend={(text) => setInput((cur) => (cur ? `${cur} ${text}` : text))}
+            />
             <input
               type="text"
               value={input}
