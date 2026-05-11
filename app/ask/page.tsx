@@ -5,6 +5,8 @@ import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { captureEvent } from '@/lib/analytics/client'
+import { UploadButton } from '@/components/chat/UploadButton'
+import { VoiceButton } from '@/components/chat/VoiceButton'
 import { MarkdownMessage } from '@/components/markdown-message'
 
 const SUGGESTED = [
@@ -206,7 +208,12 @@ export default function PublicAskPage() {
           onSubmit={handleSubmit}
           className="px-4 sm:px-10 py-4 border-t border-[#1a4a2e] flex-shrink-0"
         >
-          <div className="max-w-2xl mx-auto flex gap-3">
+          <div className="max-w-2xl mx-auto flex gap-3 items-center">
+            <UploadButton mode="signup" disabled={isLoading} />
+            <VoiceButton
+              disabled={isLoading || rateLimit.blocked}
+              onAppend={(text) => setInput((cur) => (cur ? `${cur} ${text}` : text))}
+            />
             <input
               type="text"
               value={input}
