@@ -130,11 +130,11 @@ async function fetchSchemesWithAnyHistory(): Promise<Set<string>> {
     const { data, error } = await supabase
       .from('mf_nav_history')
       .select('scheme_code')
-      .range(offset, offset + 9999)
+      .range(offset, offset + 999)
     if (error || !data || data.length === 0) break
     for (const r of data as Array<{ scheme_code: string }>) set.add(r.scheme_code)
-    if (data.length < 10000) break
-    offset += 10000
+    if (data.length < 1000) break
+    offset += 1000
   }
   return set
 }
@@ -149,14 +149,14 @@ async function fetchStaleSchemes(_cutoffIso: string): Promise<Set<string>> {
     const { data, error } = await supabase
       .from('mf_nav_history')
       .select('scheme_code, nav_date')
-      .range(offset, offset + 9999)
+      .range(offset, offset + 999)
     if (error || !data || data.length === 0) break
     for (const r of data as Array<{ scheme_code: string; nav_date: string }>) {
       const cur = set.has(r.scheme_code)
       if (!cur || r.nav_date > '0000-00-00') set.add(r.scheme_code)
     }
-    if (data.length < 10000) break
-    offset += 10000
+    if (data.length < 1000) break
+    offset += 1000
   }
   return set
 }

@@ -67,6 +67,9 @@ async function fetchAllSchemes(): Promise<SchemeRow[]> {
 
 async function fetchHistory(scheme_code: string): Promise<NavPoint[]> {
   const all: NavPoint[] = []
+  // Supabase caps a single response at 1000 rows even when range() asks
+  // for more. Page in chunks of exactly 1000.
+  const PAGE = 1000
   let offset = 0
   while (true) {
     const { data, error } = await supabase
@@ -74,11 +77,11 @@ async function fetchHistory(scheme_code: string): Promise<NavPoint[]> {
       .select('nav_date, nav')
       .eq('scheme_code', scheme_code)
       .order('nav_date', { ascending: true })
-      .range(offset, offset + 9999)
+      .range(offset, offset + PAGE - 1)
     if (error || !data || data.length === 0) break
     all.push(...(data as NavPoint[]))
-    if (data.length < 10000) break
-    offset += 10000
+    if (data.length < PAGE) break
+    offset += PAGE
   }
   return all
 }
