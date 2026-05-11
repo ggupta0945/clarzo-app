@@ -19,10 +19,11 @@ import { RebalanceCard } from '@/components/dashboard/RebalanceCard'
 import { AskClarzoBar } from '@/components/dashboard/AskClarzoBar'
 import { PortfolioHero } from '@/components/dashboard/PortfolioHero'
 import { NiftyChart } from '@/components/dashboard/NiftyChart'
+import { SamplePortfolioCTA } from '@/components/dashboard/SamplePortfolioCTA'
+import { SamplePortfolioBanner } from '@/components/dashboard/SamplePortfolioBanner'
 import { TrackEvent } from '@/components/analytics/TrackEvent'
 import { aggregateBySector } from '@/lib/allocation'
 import { fetchNifty } from '@/lib/nifty-data'
-import Link from 'next/link'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -53,14 +54,9 @@ export default async function DashboardPage() {
           <div className="text-4xl mb-3">📊</div>
           <h2 className="text-lg mb-2 text-fg font-semibold">No portfolio yet</h2>
           <p className="text-sm text-fg-muted mb-5 max-w-md mx-auto">
-            Upload your portfolio to see a complete picture with auto-generated insights.
+            Upload your portfolio to see a complete picture with auto-generated insights — or load a sample to explore the product first.
           </p>
-          <Link
-            href="/dashboard/upload"
-            className="inline-block bg-accent hover:bg-accent-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
-          >
-            Upload Portfolio →
-          </Link>
+          <SamplePortfolioCTA />
         </div>
       </div>
     )
@@ -94,6 +90,7 @@ export default async function DashboardPage() {
   const nifty = await fetchNifty('6mo')
 
   const firstName = profile?.name?.split(' ')[0] || 'there'
+  const isSampleMode = holdings.some((h) => h.is_sample)
 
   return (
     <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8 pb-28">
@@ -103,8 +100,11 @@ export default async function DashboardPage() {
           holdings_count: holdings.length,
           insights_count: insights.length,
           health_score: health.score,
+          is_sample_mode: isSampleMode,
         }}
       />
+
+      {isSampleMode && <SamplePortfolioBanner />}
 
       {/* Portfolio hero — title, segment pills, invested/returns, total arc.
           Re-upload + ticker chips live inside the hero header now. */}

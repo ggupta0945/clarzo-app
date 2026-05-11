@@ -18,6 +18,9 @@ export type EnrichedHolding = {
   sector: string | null
   mcap_category: string | null
   corp_group: string | null
+  // Optional — undefined when the migration hasn't been applied yet, so
+  // downstream `is_sample === true` checks degrade safely to false.
+  is_sample?: boolean
 }
 
 export type PortfolioSummary = {
@@ -34,7 +37,7 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
 
   const { data: holdings, error: holdingsErr } = await supabase
     .from('holdings')
-    .select('id, isin, scheme_name, units, avg_cost, asset_type, current_price')
+    .select('id, isin, scheme_name, units, avg_cost, asset_type, current_price, is_sample')
     .eq('user_id', userId)
 
   if (holdingsErr) {
@@ -171,6 +174,7 @@ export async function getUserHoldings(userId: string, client?: SupabaseClient<an
       sector,
       mcap_category: meta?.mcap_category ?? null,
       corp_group: meta?.corp_group ?? null,
+      is_sample: Boolean(h.is_sample),
     }
   })
 }
