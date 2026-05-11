@@ -287,6 +287,80 @@ function StatIcon({ name }: { name: 'wallet' | 'invested' | 'pnl' }) {
   }
 }
 
+// Sortable column header. Active column shows an arrow indicating
+// direction; idle columns show a faint dual-arrow hint so the affordance
+// is discoverable without crowding the header.
+function SortHeader<K extends string>({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+  align,
+  className = '',
+}: {
+  label: string
+  sortKey: K
+  activeKey: K
+  dir: 'asc' | 'desc'
+  onClick: (k: K) => void
+  align: 'left' | 'right'
+  className?: string
+}) {
+  const isActive = sortKey === activeKey
+  const justify = align === 'right' ? 'justify-end' : 'justify-start'
+  return (
+    <th
+      className={`text-${align} text-[11px] uppercase tracking-wide text-fg-muted py-3 font-medium ${className}`}
+    >
+      <button
+        onClick={() => onClick(sortKey)}
+        className={`inline-flex items-center gap-1 w-full ${justify} hover:text-accent transition ${
+          isActive ? 'text-accent' : ''
+        }`}
+      >
+        <span>{label}</span>
+        <SortArrow active={isActive} dir={dir} />
+      </button>
+    </th>
+  )
+}
+
+function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  if (active) {
+    return (
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {dir === 'asc' ? <polyline points="18 15 12 9 6 15" /> : <polyline points="6 9 12 15 18 9" />}
+      </svg>
+    )
+  }
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="opacity-40"
+    >
+      <polyline points="8 9 12 5 16 9" />
+      <polyline points="8 15 12 19 16 15" />
+    </svg>
+  )
+}
+
 function SectorBadge({ sector }: { sector: string }) {
   const canonical = normalizeSector(sector)
   const c = SECTOR_COLORS[canonical]
@@ -696,7 +770,16 @@ export function StocksView({ holdings, summary, profileName }: Props) {
     return Array.from(seen.values())
   }, [holdings])
 
-  const [sortBy, setSortBy] = useState<'value' | 'pct' | 'pnl'>('value')
+  // Sortable column model. Defaults match the previous chip-based UI
+  // (highest value first); clicking a column header toggles direction,
+  // clicking a different header switches key and resets to descending
+  // for numbers, ascending for strings.
+  type SortKey = 'name' | 'sector' | 'qty' | 'cmp' | 'value' | 'pnl' | 'pct'
+  type SortDir = 'asc' | 'desc'
+  const STRING_KEYS = new Set<SortKey>(['name', 'sector'])
+
+  const [sortBy, setSortBy] = useState<SortKey>('value')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [showAll, setShowAll] = useState(false)
   const [expandedStock, setExpandedStock] = useState<string | null>(null)
   // Default the chat panel to the largest holding so users see the auto-greet
@@ -706,11 +789,36 @@ export function StocksView({ holdings, summary, profileName }: Props) {
     () => [...localHoldings].sort((a, b) => b.value - a.value)[0] ?? null,
   )
 
+  function handleSort(key: SortKey) {
+    if (key === sortBy) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortBy(key)
+      setSortDir(STRING_KEYS.has(key) ? 'asc' : 'desc')
+    }
+  }
+
   const sorted = useMemo(() => {
-    return [...localHoldings].sort((a, b) =>
-      sortBy === 'value' ? b.value - a.value : sortBy === 'pct' ? b.pct - a.pct : b.pnl - a.pnl,
-    )
-  }, [sortBy, localHoldings])
+    const dirMul = sortDir === 'asc' ? 1 : -1
+    return [...localHoldings].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name) * dirMul
+        case 'sector':
+          return a.sector.localeCompare(b.sector) * dirMul
+        case 'qty':
+          return (a.qty - b.qty) * dirMul
+        case 'cmp':
+          return (a.price - b.price) * dirMul
+        case 'value':
+          return (a.value - b.value) * dirMul
+        case 'pnl':
+          return (a.pnl - b.pnl) * dirMul
+        case 'pct':
+          return (a.pct - b.pct) * dirMul
+      }
+    })
+  }, [sortBy, sortDir, localHoldings])
 
   const CURRENT = summary.netWorth
   const INVESTED = summary.invested
@@ -973,23 +1081,8 @@ export function StocksView({ holdings, summary, profileName }: Props) {
                   </span>
                 </h2>
                 <p className="text-[11px] text-fg-muted mt-0.5">
-                  Click any row to expand · 1D chart from Yahoo Finance
+                  Click any row to expand · Click column headers to sort
                 </p>
-              </div>
-              <div className="flex gap-1.5">
-                {(['value', 'pct', 'pnl'] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSortBy(s)}
-                    className={`text-[11px] px-2.5 py-1 rounded-full border transition font-medium ${
-                      sortBy === s
-                        ? 'bg-accent border-accent text-white'
-                        : 'bg-surface border-line-strong text-fg-muted hover:border-accent hover:text-accent'
-                    }`}
-                  >
-                    {s === 'value' ? 'By Value' : s === 'pct' ? 'By Return %' : 'By P&L ₹'}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -997,30 +1090,72 @@ export function StocksView({ holdings, summary, profileName }: Props) {
               <table className="w-full">
                 <thead className="bg-canvas">
                   <tr>
-                    <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-4 py-3 font-medium">
-                      Stock
-                    </th>
+                    <SortHeader
+                      label="Stock"
+                      sortKey="name"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="left"
+                      className="px-4"
+                    />
                     <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden md:table-cell">
                       1D
                     </th>
-                    <th className="text-left text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden sm:table-cell">
-                      Sector
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium">
-                      Qty
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden md:table-cell">
-                      Avg / CMP
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium">
-                      Value
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-3 py-3 font-medium hidden sm:table-cell">
-                      P&L
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wide text-fg-muted px-4 py-3 font-medium">
-                      Return
-                    </th>
+                    <SortHeader
+                      label="Sector"
+                      sortKey="sector"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="left"
+                      className="px-3 hidden sm:table-cell"
+                    />
+                    <SortHeader
+                      label="Qty"
+                      sortKey="qty"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="right"
+                      className="px-3"
+                    />
+                    <SortHeader
+                      label="Avg / CMP"
+                      sortKey="cmp"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="right"
+                      className="px-3 hidden md:table-cell"
+                    />
+                    <SortHeader
+                      label="Value"
+                      sortKey="value"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="right"
+                      className="px-3"
+                    />
+                    <SortHeader
+                      label="P&L"
+                      sortKey="pnl"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="right"
+                      className="px-3 hidden sm:table-cell"
+                    />
+                    <SortHeader
+                      label="Return"
+                      sortKey="pct"
+                      activeKey={sortBy}
+                      dir={sortDir}
+                      onClick={handleSort}
+                      align="right"
+                      className="px-4"
+                    />
                   </tr>
                 </thead>
                 <tbody>

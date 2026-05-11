@@ -4,7 +4,7 @@ import { generateInsights } from '@/lib/insights'
 import { syncNotifications } from '@/lib/notifications'
 import { computeHealthScore } from '@/lib/portfolio-health'
 import { getUserGoals } from '@/lib/goals'
-import { fetchRecentCorpActions } from '@/lib/stock-events'
+import { fetchRecentCorpActions, estimateUpcomingEarnings } from '@/lib/stock-events'
 import { aggregateAssetClasses } from '@/lib/asset-class'
 import { assessRiskAndHorizon } from '@/lib/risk-horizon'
 import { generateRebalanceSuggestions } from '@/lib/rebalance'
@@ -12,6 +12,7 @@ import { InsightCard } from '@/components/dashboard/InsightCard'
 import { PortfolioHealthCard } from '@/components/dashboard/PortfolioHealthCard'
 import { GoalProgress } from '@/components/dashboard/GoalProgress'
 import { CorporateActions } from '@/components/dashboard/CorporateActions'
+import { UpcomingEarnings } from '@/components/dashboard/UpcomingEarnings'
 import { TaxSnapshot } from '@/components/dashboard/TaxSnapshot'
 import { AssetClassBreakdown } from '@/components/dashboard/AssetClassBreakdown'
 import { RiskHorizonCard } from '@/components/dashboard/RiskHorizonCard'
@@ -21,9 +22,16 @@ import { PortfolioHero } from '@/components/dashboard/PortfolioHero'
 import { NiftyChart } from '@/components/dashboard/NiftyChart'
 import { SamplePortfolioCTA } from '@/components/dashboard/SamplePortfolioCTA'
 import { SamplePortfolioBanner } from '@/components/dashboard/SamplePortfolioBanner'
+import { WhatChangedBanner } from '@/components/dashboard/WhatChangedBanner'
 import { TrackEvent } from '@/components/analytics/TrackEvent'
 import { aggregateBySector } from '@/lib/allocation'
 import { fetchNifty } from '@/lib/nifty-data'
+import {
+  buildSnapshot,
+  computeVisitDiff,
+  MIN_DAYS_FOR_BANNER,
+  type VisitSnapshot,
+} from '@/lib/visit-diff'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -31,7 +39,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name')
+    .select('name, last_dashboard_visit_at, last_visit_snapshot')
     .eq('id', user!.id)
     .single()
 
@@ -85,12 +93,47 @@ export default async function DashboardPage() {
     .slice(0, 8)
     .map((h) => h.scheme_name)
   const recentActions = topStockSymbols.length > 0 ? await fetchRecentCorpActions(topStockSymbols) : []
+  const upcomingEarnings = estimateUpcomingEarnings(topStockSymbols)
 
   // Nifty 50 — default 6-month series; client can re-fetch shorter ranges.
   const nifty = await fetchNifty('6mo')
 
   const firstName = profile?.name?.split(' ')[0] || 'there'
   const isSampleMode = holdings.some((h) => h.is_sample)
+
+  // "What changed since last visit" — compute the diff against the prior
+  // snapshot, then refresh the snapshot if at least MIN_DAYS_FOR_BANNER
+  // have elapsed. Visits closer than that don't bump the snapshot, so the
+  // user's "yesterday" reference doesn't get clobbered by an afternoon
+  // re-open. Suppressed entirely in sample mode — fake P&L deltas would
+  // be noise.
+  const prevSnapshot = profile?.last_visit_snapshot as VisitSnapshot | null
+  const visitDiff =
+    !isSampleMode && prevSnapshot
+      ? computeVisitDiff(prevSnapshot, holdings, summary, recentActions)
+      : null
+
+  if (!isSampleMode) {
+    const shouldUpdateSnapshot =
+      !profile?.last_dashboard_visit_at ||
+      (Date.now() - new Date(profile.last_dashboard_visit_at).getTime()) /
+        (1000 * 60 * 60 * 24) >=
+        MIN_DAYS_FOR_BANNER
+    if (shouldUpdateSnapshot) {
+      const nextSnapshot = buildSnapshot(holdings, summary)
+      // Fire-and-forget: a write failure here shouldn't break the page render.
+      void supabase
+        .from('profiles')
+        .update({
+          last_dashboard_visit_at: nextSnapshot.taken_at,
+          last_visit_snapshot: nextSnapshot,
+        })
+        .eq('id', user!.id)
+        .then(({ error }) => {
+          if (error) console.error('visit snapshot write failed:', error)
+        })
+    }
+  }
 
   return (
     <div className="px-6 py-4 sm:px-10 sm:py-6 lg:px-14 lg:py-8 pb-28">
@@ -105,6 +148,7 @@ export default async function DashboardPage() {
       />
 
       {isSampleMode && <SamplePortfolioBanner />}
+      {visitDiff && <WhatChangedBanner diff={visitDiff} />}
 
       {/* Portfolio hero — title, segment pills, invested/returns, total arc.
           Re-upload + ticker chips live inside the hero header now. */}
@@ -145,9 +189,14 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Corporate actions + Tax — bottom row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+      {/* Upcoming earnings (estimated) + Corporate actions — calendar row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <UpcomingEarnings earnings={upcomingEarnings} />
         <CorporateActions actions={recentActions} />
+      </div>
+
+      {/* Tax */}
+      <div className="grid grid-cols-1 gap-3 mb-5">
         <TaxSnapshot holdings={holdings} />
       </div>
 
