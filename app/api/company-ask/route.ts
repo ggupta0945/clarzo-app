@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { chatModel, buildSystemBlocks } from '@/lib/ai'
+import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { generateText } from 'ai'
 
@@ -53,10 +53,11 @@ Anchor your answer in the company data above. When you go beyond it, label the i
   try {
     const { text } = await generateText({
       model: chatModel,
-        system: buildSystemBlocks(CLARZOGPT_PERSONA, companyBlock),
+      system: buildSystemBlocks(CLARZOGPT_PERSONA, companyBlock),
       prompt: question,
       maxOutputTokens: 10000,
       temperature: 0.5,
+      providerOptions: chatProviderOptions,
     })
     return NextResponse.json({ text })
   } catch (err) {

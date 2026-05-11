@@ -101,18 +101,26 @@ export async function getNavHistory(
     from = d.toISOString().slice(0, 10)
   }
 
-  let q = supabase
-    .from('mf_nav_history')
-    .select('nav_date, nav')
-    .eq('scheme_code', scheme_code)
-    .order('nav_date', { ascending: true })
-    .limit(2500)
-
-  if (from) q = q.gte('nav_date', from)
-
-  const { data, error } = await q
-  if (error || !data) return []
-  return data as NavPoint[]
+  // Supabase caps responses at 1000 rows. 5Y daily NAV is ~1260 points, so
+  // we page through in chunks of 1000 until the window is fully covered.
+  const PAGE = 1000
+  const all: NavPoint[] = []
+  let offset = 0
+  while (true) {
+    let q = supabase
+      .from('mf_nav_history')
+      .select('nav_date, nav')
+      .eq('scheme_code', scheme_code)
+      .order('nav_date', { ascending: true })
+      .range(offset, offset + PAGE - 1)
+    if (from) q = q.gte('nav_date', from)
+    const { data, error } = await q
+    if (error || !data || data.length === 0) break
+    all.push(...(data as NavPoint[]))
+    if (data.length < PAGE) break
+    offset += PAGE
+  }
+  return all
 }
 
 export type SchemeSearchResult = Pick<

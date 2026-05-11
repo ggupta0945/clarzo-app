@@ -1,6 +1,6 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { NextRequest, NextResponse } from 'next/server'
-import { chatModel, buildSystemBlocks } from '@/lib/ai'
+import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { checkPublicAskLimit, hashIP, getClientIP } from '@/lib/ratelimit'
 
@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
+    providerOptions: chatProviderOptions,
     onError: ({ error }) => {
-      // Surfaces auth failures (e.g. missing ANTHROPIC_API_KEY) and provider
+      // Surfaces auth failures (e.g. missing OPENAI_API_KEY) and provider
       // errors that would otherwise drop a silent empty stream on the client.
       console.error('[public-ask] stream error:', error)
     },

@@ -7,10 +7,9 @@ import { generateInsights } from '@/lib/insights'
 import { getUserGoals } from '@/lib/goals'
 import { buildPortfolioBlock } from '@/lib/chat-context'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
-import { chatModel } from '@/lib/ai'
+import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
-import { buildSystemBlocks } from '@/lib/ai'
 
 export const maxDuration = 60
 
@@ -78,15 +77,13 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: chatModel,
-    // buildSystemBlocks returns an Anthropic multi-block array (with prompt
-    // caching on the persona block) when AI_PROVIDER=anthropic, or a plain
-    // concatenated string for Gemini. Both shapes are accepted by streamText.
     system: buildSystemBlocks(CLARZOGPT_PERSONA, portfolioBlock),
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 10000,
     temperature: 0.5,
+    providerOptions: chatProviderOptions,
     onError: ({ error }) => {
-      // Surfaces auth failures (e.g. missing ANTHROPIC_API_KEY) and provider
+      // Surfaces auth failures (e.g. missing OPENAI_API_KEY) and provider
       // errors that would otherwise drop a silent empty stream on the client.
       console.error('[ask] stream error:', error)
     },
