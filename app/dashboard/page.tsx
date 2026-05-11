@@ -4,7 +4,7 @@ import { generateInsights } from '@/lib/insights'
 import { syncNotifications } from '@/lib/notifications'
 import { computeHealthScore } from '@/lib/portfolio-health'
 import { getUserGoals } from '@/lib/goals'
-import { fetchRecentCorpActions } from '@/lib/stock-events'
+import { fetchRecentCorpActions, estimateUpcomingEarnings } from '@/lib/stock-events'
 import { aggregateAssetClasses } from '@/lib/asset-class'
 import { assessRiskAndHorizon } from '@/lib/risk-horizon'
 import { generateRebalanceSuggestions } from '@/lib/rebalance'
@@ -12,6 +12,7 @@ import { InsightCard } from '@/components/dashboard/InsightCard'
 import { PortfolioHealthCard } from '@/components/dashboard/PortfolioHealthCard'
 import { GoalProgress } from '@/components/dashboard/GoalProgress'
 import { CorporateActions } from '@/components/dashboard/CorporateActions'
+import { UpcomingEarnings } from '@/components/dashboard/UpcomingEarnings'
 import { TaxSnapshot } from '@/components/dashboard/TaxSnapshot'
 import { AssetClassBreakdown } from '@/components/dashboard/AssetClassBreakdown'
 import { RiskHorizonCard } from '@/components/dashboard/RiskHorizonCard'
@@ -92,6 +93,7 @@ export default async function DashboardPage() {
     .slice(0, 8)
     .map((h) => h.scheme_name)
   const recentActions = topStockSymbols.length > 0 ? await fetchRecentCorpActions(topStockSymbols) : []
+  const upcomingEarnings = estimateUpcomingEarnings(topStockSymbols)
 
   // Nifty 50 — default 6-month series; client can re-fetch shorter ranges.
   const nifty = await fetchNifty('6mo')
@@ -187,9 +189,14 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Corporate actions + Tax — bottom row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+      {/* Upcoming earnings (estimated) + Corporate actions — calendar row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <UpcomingEarnings earnings={upcomingEarnings} />
         <CorporateActions actions={recentActions} />
+      </div>
+
+      {/* Tax */}
+      <div className="grid grid-cols-1 gap-3 mb-5">
         <TaxSnapshot holdings={holdings} />
       </div>
 
