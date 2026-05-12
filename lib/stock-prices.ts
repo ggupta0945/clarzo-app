@@ -154,9 +154,13 @@ async function fetchStockSnapshotSingle(symbol: string): Promise<StockSnapshot |
     if (!meta?.regularMarketPrice) continue
     const price = meta.regularMarketPrice
     const prev = meta.previousClose ?? price
+    // Prefer the API's reported changePct; compute from prices as fallback
+    const changePct = meta.regularMarketChangePercent != null
+      ? meta.regularMarketChangePercent
+      : prev > 0 ? ((price - prev) / prev) * 100 : 0
     return {
       price,
-      changePct: parseFloat((meta.regularMarketChangePercent ?? 0).toFixed(2)),
+      changePct: parseFloat(changePct.toFixed(2)),
       changeAbs: parseFloat((price - prev).toFixed(2)),
       previousClose: prev,
       dayHigh: meta.regularMarketDayHigh ?? price,

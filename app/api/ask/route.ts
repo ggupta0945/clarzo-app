@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     model: chatModel,
     system: buildSystemBlocks(CLARZOGPT_PERSONA, portfolioBlock),
     messages: await convertToModelMessages(messages),
-    maxOutputTokens: 10000,
+    maxOutputTokens: 16000,
     temperature: 0.5,
     providerOptions: chatProviderOptions,
     stopWhen: stepCountIs(5),
