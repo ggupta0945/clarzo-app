@@ -53,6 +53,86 @@ async function fetchYahoo(symbol: string): Promise<number | null> {
   return null
 }
 
+type YahooMetaExtended = {
+  regularMarketPrice?: number
+  previousClose?: number
+  regularMarketChangePercent?: number
+  regularMarketDayHigh?: number
+  regularMarketDayLow?: number
+  fiftyTwoWeekHigh?: number
+  fiftyTwoWeekLow?: number
+  symbol?: string
+}
+
+type YahooChartResponseExtended = {
+  chart?: {
+    result?: Array<{ meta?: YahooMetaExtended }>
+    error?: { code?: string; description?: string } | null
+  }
+}
+
+async function fetchYahooRaw(ticker: string): Promise<YahooMetaExtended | null> {
+  const url = `${YF_BASE}/${encodeURIComponent(ticker)}?interval=1d&range=1d`
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        Accept: 'application/json',
+      },
+      next: { revalidate: REVALIDATE_SECONDS },
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as YahooChartResponseExtended
+    const meta = json.chart?.result?.[0]?.meta
+    if (!meta?.regularMarketPrice) return null
+    return meta
+  } catch {
+    return null
+  }
+}
+
+export type IndexSnapshot = {
+  name: string
+  price: number
+  changePct: number
+  dayHigh: number
+  dayLow: number
+  week52High: number
+  week52Low: number
+}
+
+const INDICES: Array<{ ticker: string; name: string }> = [
+  { ticker: '^NSEI',    name: 'Nifty 50' },
+  { ticker: '^BSESN',   name: 'BSE Sensex' },
+  { ticker: '^NSEBANK', name: 'Nifty Bank' },
+  { ticker: 'NIFTYIT.NS', name: 'Nifty IT' },
+  { ticker: '^CNXAUTO', name: 'Nifty Auto' },
+  { ticker: '^CNXPHARMA', name: 'Nifty Pharma' },
+]
+
+/**
+ * Fetches live levels for key Indian indices (Nifty 50, Sensex, Bank Nifty,
+ * Nifty IT, Auto, Pharma) including % change from previous close.
+ */
+export async function fetchIndices(): Promise<IndexSnapshot[]> {
+  const results = await Promise.all(
+    INDICES.map(async ({ ticker, name }) => {
+      const meta = await fetchYahooRaw(ticker)
+      if (!meta?.regularMarketPrice) return null
+      return {
+        name,
+        price: meta.regularMarketPrice,
+        changePct: meta.regularMarketChangePercent ?? 0,
+        dayHigh: meta.regularMarketDayHigh ?? meta.regularMarketPrice,
+        dayLow: meta.regularMarketDayLow ?? meta.regularMarketPrice,
+        week52High: meta.fiftyTwoWeekHigh ?? meta.regularMarketPrice,
+        week52Low: meta.fiftyTwoWeekLow ?? meta.regularMarketPrice,
+      } satisfies IndexSnapshot
+    }),
+  )
+  return results.filter((r): r is IndexSnapshot => r !== null)
+}
+
 /**
  * Fetches live prices for a list of NSE/BSE ticker symbols. Returns a Map
  * keyed by the input symbol (uppercase). Symbols that can't be resolved are

@@ -11,7 +11,7 @@ import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
-import { fetchLiveStockPrices } from '@/lib/stock-prices'
+import { fetchLiveStockPrices, fetchIndices } from '@/lib/stock-prices'
 import { fetchRecentCompanyNews, fetchCompanyProfile, fetchMarketNews } from '@/lib/finnhub'
 
 export const maxDuration = 60
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     maxOutputTokens: 10000,
     temperature: 0.5,
     providerOptions: chatProviderOptions,
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(5),
     tools: {
       getStockPrice: tool({
         description: 'Get the current live market price of one or more Indian stocks by NSE ticker symbol.',
@@ -144,15 +144,34 @@ export async function POST(req: NextRequest) {
       getMarketNews: tool({
         description: "Get today's general Indian and global stock market news headlines.",
         inputSchema: z.object({
-          limit: z.number().optional().describe('Number of headlines to return (default 8)'),
+          limit: z.number().optional().describe('Number of headlines to return (default 10)'),
         }),
-        execute: async ({ limit = 8 }: { limit?: number }) => {
+        execute: async ({ limit = 10 }: { limit?: number }) => {
           const news = await fetchMarketNews('general', limit)
           return {
             news: news.map(n => ({
               headline: n.headline,
               source: n.source,
               date: new Date(n.datetime * 1000).toISOString().split('T')[0],
+            })),
+          }
+        },
+      }),
+      getIndices: tool({
+        description: 'Get live levels and % change for key Indian indices: Nifty 50, Sensex, Nifty Bank, Nifty IT, Nifty Auto, Nifty Pharma. Always call this when asked about market performance, how the market is doing today, or broad market direction.',
+        inputSchema: z.object({}),
+        execute: async () => {
+          const indices = await fetchIndices()
+          return {
+            asOf: new Date().toISOString(),
+            indices: indices.map(i => ({
+              name: i.name,
+              price: i.price,
+              changePct: parseFloat(i.changePct.toFixed(2)),
+              dayHigh: i.dayHigh,
+              dayLow: i.dayLow,
+              week52High: i.week52High,
+              week52Low: i.week52Low,
             })),
           }
         },
