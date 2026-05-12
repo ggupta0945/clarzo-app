@@ -17,6 +17,30 @@ const SUGGESTED_QUESTIONS = [
   'How does my portfolio compare to a typical investor?',
 ]
 
+// Extract the numbered follow-up questions the AI appends to each answer.
+// Matches lines like "1. Question text?" or "2. **Bold question**?" under any
+// heading that contains "follow" (case-insensitive). Returns up to 2 questions.
+function parseFollowUps(text: string): string[] {
+  // Find a follow-up section heading
+  const sectionMatch = text.match(/(?:^|\n)#{1,3}\s*.*follow.{0,20}\n([\s\S]*?)(?:\n#{1,3}|\n---|\n\*\*\*|$)/i)
+    ?? text.match(/\*\*.*follow.{0,30}\*\*\s*\n([\s\S]*?)(?:\n\*\*|\n---|\n#{1,3}|$)/i)
+
+  const block = sectionMatch?.[1] ?? text
+
+  const lines = block.split('\n')
+  const questions: string[] = []
+  for (const line of lines) {
+    // Match "1. Question" or "- Question" optionally with **bold** wrapper
+    const m = line.match(/^[\s\*]*\d+[\.\)]\s+\*{0,2}(.+?)\*{0,2}\s*$/)
+    if (m) {
+      const q = m[1].trim().replace(/\*\*/g, '')
+      if (q.length > 10) questions.push(q)
+    }
+    if (questions.length >= 2) break
+  }
+  return questions
+}
+
 const AUTO_GREET_PROMPT =
   "I just opened my dashboard. Give me a 3-bullet snapshot of my portfolio: (1) the most important thing I should know right now, (2) the biggest risk, (3) the most interesting opportunity. Keep each bullet to a single sentence with concrete numbers from my actual holdings. End by asking what I want to dig into."
 
@@ -419,20 +443,26 @@ function AskPageInner() {
           </Bubble>
         )}
 
-        {!hydrating && hasAnyMessages && (history.length > 0 || liveRender.length > 0) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-            {SUGGESTED_QUESTIONS.slice(0, 2).map((q) => (
-              <button
-                key={q}
-                onClick={() => handleSuggest(q)}
-                disabled={isLoading}
-                className="text-left px-2.5 py-1.5 rounded-lg bg-surface border border-line text-fg-muted text-[11px] hover:border-accent hover:text-fg disabled:opacity-50 transition"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
+        {!hydrating && hasAnyMessages && !isLoading && (history.length > 0 || liveRender.length > 0) && (() => {
+          const lastAssistant = [...liveRender].reverse().find(m => m.role === 'assistant')
+            ?? [...history].reverse().find(m => m.role === 'assistant')
+          const dynamic = lastAssistant ? parseFollowUps(lastAssistant.content) : []
+          const chips = dynamic.length >= 2 ? dynamic.slice(0, 2) : SUGGESTED_QUESTIONS.slice(0, 2)
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+              {chips.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSuggest(q)}
+                  disabled={isLoading}
+                  className="text-left px-2.5 py-1.5 rounded-lg bg-surface border border-line text-fg-muted text-[11px] hover:border-accent hover:text-fg disabled:opacity-50 transition"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
 
         <div ref={bottomRef} />
       </div>
