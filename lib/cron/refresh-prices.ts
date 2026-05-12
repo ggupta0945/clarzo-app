@@ -149,7 +149,17 @@ export async function refreshPrices(
     const isin = symbolToIsin.get(row.symbol.toUpperCase())
     if (!isin) continue
     fetchedSymbols.add(row.symbol.toUpperCase())
-    flatRows.push({ ...row, isin, source: 'nse_bhav' })
+    flatRows.push({
+      isin,
+      date: row.date,
+      open: row.open,
+      high: row.high,
+      low: row.low,
+      close: row.close,
+      prev_close: row.prev_close,
+      volume: row.volume,
+      source: 'nse_bhav',
+    })
   }
 
   const failedSymbols = [...universSymbols].filter((s) => !fetchedSymbols.has(s))
