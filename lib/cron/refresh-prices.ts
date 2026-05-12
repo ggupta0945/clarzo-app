@@ -98,6 +98,7 @@ export type RefreshPricesResult = {
   fetchedCount: number
   upsertedRows: number
   failedSymbols: string[]
+  upsertError?: string
   durationMs: number
 }
 
@@ -154,6 +155,7 @@ export async function refreshPrices(
   const failedSymbols = [...universSymbols].filter((s) => !fetchedSymbols.has(s))
 
   let upsertedRows = 0
+  let upsertError: string | undefined
   if (flatRows.length > 0) {
     const CHUNK = 500
     for (let i = 0; i < flatRows.length; i += CHUNK) {
@@ -162,6 +164,7 @@ export async function refreshPrices(
         .upsert(flatRows.slice(i, i + CHUNK), { onConflict: 'isin,date' })
       if (error) {
         console.error('[refresh-prices] upsert failed:', error.message)
+        upsertError ??= error.message
       } else {
         upsertedRows += Math.min(CHUNK, flatRows.length - i)
       }
@@ -174,6 +177,7 @@ export async function refreshPrices(
     fetchedCount: fetchedSymbols.size,
     upsertedRows,
     failedSymbols,
+    ...(upsertError ? { upsertError } : {}),
     durationMs: Date.now() - t0,
   }
 }
