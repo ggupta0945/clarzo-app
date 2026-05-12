@@ -29,13 +29,48 @@ export async function getUsersWithHoldings(): Promise<string[]> {
   return [...new Set((data ?? []).map((row) => row.user_id as string).filter(Boolean))]
 }
 
-export async function sendWeeklyDigestForUser(userId: string, options?: { sample?: boolean }) {
+// Resend errors that aren't really "failures" — they're delivery configuration
+// gaps we can do nothing about per-user. Classify and skip instead of throwing
+// so the cron's error log doesn't fill up with one line per non-account-owner
+// user every week. The right fix is verifying the sender domain in Resend;
+// until then we degrade gracefully.
+const RESEND_CONFIG_PATTERNS: ReadonlyArray<RegExp> = [
+  /only send testing emails/i,           // free tier: from = onboarding@resend.dev
+  /domain is not verified/i,             // FROM domain not configured in Resend
+  /verify a domain/i,                    // same family of error
+  /testing\.\s*Please verify/i,          // wording variant
+]
+
+const RESEND_RECIPIENT_PATTERNS: ReadonlyArray<RegExp> = [
+  /invalid.*email/i,
+  /invalid.*recipient/i,
+  /suppressed/i,                         // recipient on Resend's suppression list
+  /bounced/i,
+]
+
+type ResendSkipReason = 'domain_unverified' | 'recipient_invalid' | null
+
+function classifyResendError(message: string | undefined | null): ResendSkipReason {
+  if (!message) return null
+  if (RESEND_CONFIG_PATTERNS.some((p) => p.test(message))) return 'domain_unverified'
+  if (RESEND_RECIPIENT_PATTERNS.some((p) => p.test(message))) return 'recipient_invalid'
+  return null
+}
+
+export type DigestResult =
+  | { skipped: true; reason: 'missing_email' | 'no_holdings' | 'domain_unverified' | 'recipient_invalid'; detail?: string }
+  | { skipped: false; emailId: string | null }
+
+export async function sendWeeklyDigestForUser(
+  userId: string,
+  options?: { sample?: boolean },
+): Promise<DigestResult> {
   const admin = createAdminClient()
   const user = await getDigestUser(userId)
-  if (!user?.email) return { skipped: true, reason: 'missing_email' as const }
+  if (!user?.email) return { skipped: true, reason: 'missing_email' }
 
   const holdings = await getUserHoldings(userId, admin)
-  if (holdings.length === 0) return { skipped: true, reason: 'no_holdings' as const }
+  if (holdings.length === 0) return { skipped: true, reason: 'no_holdings' }
 
   const data = await buildDigestData(user, holdings)
   const apiKey = process.env.RESEND_API_KEY
@@ -55,6 +90,11 @@ export async function sendWeeklyDigestForUser(userId: string, options?: { sample
   })
 
   if (response.error) {
+    const classification = classifyResendError(response.error.message)
+    if (classification) {
+      return { skipped: true, reason: classification, detail: response.error.message }
+    }
+    // Unknown Resend error — bubble up so the route can count + log it.
     throw new Error(response.error.message)
   }
 
