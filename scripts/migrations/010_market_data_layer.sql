@@ -142,10 +142,12 @@ create table if not exists public.corporate_events (
 );
 create index if not exists idx_corp_events_isin_date
   on public.corporate_events (isin, event_date desc);
--- Partial index for the calendar query: "what's coming up?"
-create index if not exists idx_corp_events_upcoming
-  on public.corporate_events (event_date)
-  where event_date >= current_date;
+-- Calendar index for "what's coming up across all stocks?" — plain btree
+-- because partial indexes can't reference current_date (STABLE not IMMUTABLE).
+-- Queries like `WHERE event_date >= CURRENT_DATE ORDER BY event_date` still
+-- use this index for the range scan.
+create index if not exists idx_corp_events_date
+  on public.corporate_events (event_date desc nulls last);
 
 alter table public.corporate_events enable row level security;
 drop policy if exists "corp_events are world-readable" on public.corporate_events;
