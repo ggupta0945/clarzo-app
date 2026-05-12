@@ -11,7 +11,7 @@ import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
 import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
-import { fetchLiveStockPrices, fetchIndices } from '@/lib/stock-prices'
+import { fetchStockSnapshots, fetchIndices } from '@/lib/stock-prices'
 import { fetchRecentCompanyNews, fetchCompanyProfile, fetchMarketNews } from '@/lib/finnhub'
 
 export const maxDuration = 60
@@ -88,15 +88,15 @@ export async function POST(req: NextRequest) {
     stopWhen: stepCountIs(5),
     tools: {
       getStockPrice: tool({
-        description: 'Get the current live market price of one or more Indian stocks by NSE ticker symbol.',
+        description: 'Get live price snapshot for one or more Indian stocks: current price, % change from previous close, absolute change, day high/low, and 52-week high/low.',
         inputSchema: z.object({
           symbols: z.array(z.string()).describe('NSE ticker symbols, e.g. ["RELIANCE", "HDFCBANK"]'),
         }),
         execute: async ({ symbols }: { symbols: string[] }) => {
-          const prices = await fetchLiveStockPrices(symbols.map((s: string) => s.toUpperCase()))
-          const result: Record<string, number | null> = {}
+          const snapshots = await fetchStockSnapshots(symbols.map((s: string) => s.toUpperCase()))
+          const result: Record<string, ReturnType<typeof snapshots.get> | null> = {}
           for (const sym of symbols) {
-            result[sym.toUpperCase()] = prices.get(sym.toUpperCase()) ?? null
+            result[sym.toUpperCase()] = snapshots.get(sym.toUpperCase()) ?? null
           }
           return result
         },

@@ -133,6 +133,64 @@ export async function fetchIndices(): Promise<IndexSnapshot[]> {
   return results.filter((r): r is IndexSnapshot => r !== null)
 }
 
+export type StockSnapshot = {
+  price: number
+  changePct: number
+  changeAbs: number
+  previousClose: number
+  dayHigh: number
+  dayLow: number
+  week52High: number
+  week52Low: number
+}
+
+/**
+ * Fetches a rich snapshot for a single NSE/BSE stock symbol.
+ * Returns null if the symbol can't be resolved.
+ */
+async function fetchStockSnapshotSingle(symbol: string): Promise<StockSnapshot | null> {
+  for (const suffix of SUFFIXES) {
+    const meta = await fetchYahooRaw(`${symbol}${suffix}`)
+    if (!meta?.regularMarketPrice) continue
+    const price = meta.regularMarketPrice
+    const prev = meta.previousClose ?? price
+    return {
+      price,
+      changePct: parseFloat((meta.regularMarketChangePercent ?? 0).toFixed(2)),
+      changeAbs: parseFloat((price - prev).toFixed(2)),
+      previousClose: prev,
+      dayHigh: meta.regularMarketDayHigh ?? price,
+      dayLow: meta.regularMarketDayLow ?? price,
+      week52High: meta.fiftyTwoWeekHigh ?? price,
+      week52Low: meta.fiftyTwoWeekLow ?? price,
+    }
+  }
+  return null
+}
+
+/**
+ * Fetches rich snapshots (price, % change, 52W range, etc.) for multiple symbols.
+ * Symbols that can't be resolved are absent from the returned map.
+ */
+export async function fetchStockSnapshots(
+  symbols: string[],
+): Promise<Map<string, StockSnapshot>> {
+  const unique = Array.from(
+    new Set(symbols.map((s) => s?.trim().toUpperCase()).filter((s): s is string => Boolean(s))),
+  )
+  if (unique.length === 0) return new Map()
+
+  const results = await Promise.all(
+    unique.map(async (sym) => [sym, await fetchStockSnapshotSingle(sym)] as const),
+  )
+
+  const map = new Map<string, StockSnapshot>()
+  for (const [sym, snap] of results) {
+    if (snap != null) map.set(sym, snap)
+  }
+  return map
+}
+
 /**
  * Fetches live prices for a list of NSE/BSE ticker symbols. Returns a Map
  * keyed by the input symbol (uppercase). Symbols that can't be resolved are
