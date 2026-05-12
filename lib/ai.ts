@@ -32,7 +32,7 @@ export const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-export const openaiModel = openai(process.env.OPENAI_MODEL ?? 'gpt-4o-mini')
+export const openaiModel = openai(process.env.OPENAI_MODEL ?? 'gpt-4o')
 
 // ---------------- Provider-agnostic exports ----------------
 
