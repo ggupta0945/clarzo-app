@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { captureEvent } from '@/lib/analytics/client'
-import { UploadButton } from '@/components/chat/UploadButton'
 import { VoiceButton } from '@/components/chat/VoiceButton'
 import { MarkdownMessage } from '@/components/markdown-message'
 
@@ -196,6 +195,7 @@ function AskPageInner() {
     const isImage = file.type.startsWith('image/')
     const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm')
     const isCsv = name.endsWith('.csv') || file.type === 'text/csv' || file.type === 'text/plain' || name.endsWith('.txt')
+    const isPdf = name.endsWith('.pdf') || file.type === 'application/pdf'
 
     if (isImage) {
       const reader = new FileReader()
@@ -222,8 +222,21 @@ function AskPageInner() {
         setAttachment({ name: file.name, content: reader.result as string, type: 'text', mimeType: 'text/csv' })
       }
       reader.readAsText(file)
+    } else if (isPdf) {
+      const fd = new FormData()
+      fd.set('file', file)
+      fetch('/api/parse-pdf', { method: 'POST', body: fd })
+        .then(async (res) => {
+          const data = await res.json() as { text?: string; pages?: number; message?: string }
+          if (!res.ok || !data.text) {
+            alert(data.message ?? 'Could not read this PDF.')
+            return
+          }
+          setAttachment({ name: file.name, content: data.text, type: 'text', mimeType: 'application/pdf' })
+        })
+        .catch(() => alert('Network error parsing PDF. Try again.'))
     } else {
-      alert('Supported: CSV, XLSX, TXT, or images (JPG/PNG/WEBP).')
+      alert('Supported: PDF, CSV, XLSX, TXT, or images (JPG/PNG/WEBP).')
     }
   }, [])
 
@@ -504,7 +517,7 @@ function AskPageInner() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,.csv,.xlsx,.xls,.xlsm,.txt"
+          accept="image/*,.csv,.xlsx,.xls,.xlsm,.txt,.pdf"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -577,22 +590,13 @@ function AskPageInner() {
 
         {/* Bottom toolbar */}
         <div className="flex items-center justify-between px-2.5 pb-2.5 pt-1">
-          {/* Left: portfolio upload (existing UploadButton) + image/CSV attach */}
+          {/* Left: file attachment (image / CSV / XLSX / PDF) */}
           <div className="flex items-center gap-1">
-            <UploadButton
-              size="sm"
-              disabled={isLoading || hydrating}
-              onUploaded={({ inserted }) => {
-                sendMessage({
-                  text: `I just uploaded a fresh portfolio with ${inserted} holdings. Give me a 3-bullet snapshot: most important thing, biggest risk, top opportunity. Concrete numbers from my holdings.`,
-                })
-              }}
-            />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || hydrating || rateLimit.blocked}
-              title="Attach an image, CSV, or Excel file to this message"
+              title="Attach a file — PDF, CSV, XLSX, or image"
               className="w-8 h-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-line disabled:opacity-40 transition"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
