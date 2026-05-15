@@ -8,7 +8,7 @@ import { generateInsights } from '@/lib/insights'
 import { getUserGoals } from '@/lib/goals'
 import { buildPortfolioBlock } from '@/lib/chat-context'
 import { CLARZOGPT_PERSONA } from '@/lib/public-chat-context'
-import { chatModel, chatProviderOptions, buildSystemBlocks } from '@/lib/ai'
+import { chatModel, chatProviderOptions, buildSystemBlocks, buildPortfolioContextMessages } from '@/lib/ai'
 import { checkChatLimit } from '@/lib/ratelimit'
 import { getUserPlan } from '@/lib/subscription'
 import { fetchStockSnapshots, fetchIndices } from '@/lib/stock-prices'
@@ -78,10 +78,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Inject portfolio as a cached context pair before the real conversation.
+  // The system param (persona) is also cached by Anthropic after the first request.
+  const contextMessages = buildPortfolioContextMessages(portfolioBlock)
+  const conversationMessages = await convertToModelMessages(messages)
+
   const result = streamText({
     model: chatModel,
-    system: buildSystemBlocks(CLARZOGPT_PERSONA, portfolioBlock),
-    messages: await convertToModelMessages(messages),
+    system: buildSystemBlocks(CLARZOGPT_PERSONA),
+    messages: [...contextMessages, ...conversationMessages],
     maxOutputTokens: 16000,
     temperature: 0.5,
     providerOptions: chatProviderOptions,
