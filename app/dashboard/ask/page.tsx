@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, isTextUIPart } from 'ai'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { captureEvent } from '@/lib/analytics/client'
 import { UploadButton } from '@/components/chat/UploadButton'
 import { VoiceButton } from '@/components/chat/VoiceButton'
@@ -191,8 +192,10 @@ function AskPageInner() {
     e.target.value = ''
     if (!file) return
 
+    const name = file.name.toLowerCase()
     const isImage = file.type.startsWith('image/')
-    const isText = file.type === 'text/csv' || file.type === 'text/plain' || file.name.endsWith('.csv')
+    const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm')
+    const isCsv = name.endsWith('.csv') || file.type === 'text/csv' || file.type === 'text/plain' || name.endsWith('.txt')
 
     if (isImage) {
       const reader = new FileReader()
@@ -200,14 +203,27 @@ function AskPageInner() {
         setAttachment({ name: file.name, content: reader.result as string, type: 'image', mimeType: file.type })
       }
       reader.readAsDataURL(file)
-    } else if (isText) {
+    } else if (isXlsx) {
       const reader = new FileReader()
       reader.onload = () => {
-        setAttachment({ name: file.name, content: reader.result as string, type: 'text', mimeType: file.type })
+        try {
+          const wb = XLSX.read(new Uint8Array(reader.result as ArrayBuffer), { type: 'array' })
+          const sheet = wb.Sheets[wb.SheetNames[0]]
+          const csv = XLSX.utils.sheet_to_csv(sheet)
+          setAttachment({ name: file.name, content: csv, type: 'text', mimeType: 'text/csv' })
+        } catch {
+          alert('Could not read this Excel file. Try saving as CSV first.')
+        }
+      }
+      reader.readAsArrayBuffer(file)
+    } else if (isCsv) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setAttachment({ name: file.name, content: reader.result as string, type: 'text', mimeType: 'text/csv' })
       }
       reader.readAsText(file)
     } else {
-      alert('Supported file types: CSV, TXT, or images (JPG/PNG/WEBP).')
+      alert('Supported: CSV, XLSX, TXT, or images (JPG/PNG/WEBP).')
     }
   }, [])
 
@@ -488,7 +504,7 @@ function AskPageInner() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,.csv,.txt"
+          accept="image/*,.csv,.xlsx,.xls,.xlsm,.txt"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -576,7 +592,7 @@ function AskPageInner() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || hydrating || rateLimit.blocked}
-              title="Attach an image or CSV to this message"
+              title="Attach an image, CSV, or Excel file to this message"
               className="w-8 h-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-line disabled:opacity-40 transition"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
